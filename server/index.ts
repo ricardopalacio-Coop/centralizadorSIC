@@ -88,17 +88,22 @@ app.use((req, res, next) => {
   res.status(404).send("Frontend não encontrado em " + clientDist);
 });
 
-// Inicialização do Servidor e Banco
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`==================================================`);
-      console.log(`🚀 Centralizador SIC Backend & Frontend rodando na porta ${PORT}`);
-      console.log(`🔒 Banco de Dados Dedicado: centralizador_sic_db (3307)`);
-      console.log(`==================================================`);
+// Inicialização do Servidor e Banco (Apenas se não estiver rodando como Vercel Serverless Function)
+if (process.env.VERCEL !== "1") {
+  initDb()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`==================================================`);
+        console.log(`🚀 Centralizador SIC Backend & Frontend rodando na porta ${PORT}`);
+        console.log(`🔒 Banco de Dados Dedicado: centralizador_sic_db (3307)`);
+        console.log(`==================================================`);
+      });
+    })
+    .catch((err) => {
+      console.error("❌ Falha ao conectar ao MySQL dedicado:", err.message);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error("❌ Falha ao conectar ao MySQL dedicado:", err.message);
-    process.exit(1);
-  });
+}
+
+export default app;
+export { app };
