@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" fill="none">
+  <!-- Ícone de Elos Interligados SIC -->
+  <g transform="translate(10, 10)">
+    <!-- Elo Verde (Esquerda/Baixo) -->
+    <path d="M 45 35 L 70 78 C 73 83, 68 90, 62 90 L 22 90 C 15 90, 10 83, 13 78 L 38 35 C 41 30, 49 30, 52 35 Z" 
+          stroke="#8cc63f" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+    <!-- Elo Azul (Direita/Cima) -->
+    <path d="M 68 25 L 92 68 C 95 73, 90 80, 84 80 L 44 80 C 37 80, 32 73, 35 68 L 59 25 C 62 20, 70 20, 73 25 Z" 
+          stroke="#0088cc" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+    <!-- Triângulo interno de preenchimento azul -->
+    <path d="M 72 32 L 80 46 L 64 46 Z" fill="#0088cc" />
+  </g>
+
+  <!-- Texto SIC -->
+  <text x="125" y="76" font-family="'Inter', Arial, sans-serif" font-weight="900" font-size="62" fill="#0c2330" letter-spacing="-1">sic</text>
+  
+  <!-- Barras // -->
+  <text x="228" y="74" font-family="'Inter', Arial, sans-serif" font-weight="800" font-size="44" fill="#00a8cc">//</text>
+
+  <!-- Subtítulo "sistema integrado de cooperativas" -->
+  <text x="268" y="52" font-family="'Inter', Arial, sans-serif" font-weight="600" font-size="22" fill="#1e293b">sistema integrado</text>
+  <text x="268" y="78" font-family="'Inter', Arial, sans-serif" font-weight="600" font-size="22" fill="#1e293b">de cooperativas</text>
+</svg>
