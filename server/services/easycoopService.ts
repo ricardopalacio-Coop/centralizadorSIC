@@ -1,0 +1,1001 @@
+import { pool } from "../db";
+
+/**
+ * Busca rápida de cooperados (por CPF ou Nome) no MySQL
+ */
+export async function searchEasycoopCooperados(q: string) {
+  const term = q.trim();
+  if (!term) return [];
+
+  const numericCpf = term.replace(/\D/g, "");
+  const words = term.split(/\s+/).map((w) => w.trim()).filter((w) => w.length > 0);
+
+  let sql = `
+    SELECT id, document, registration_number, name, contract_name, position,
+           admission_date, status, email, whatsapp_number, city, state
+    FROM cooperados
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+
+  if (numericCpf.length === 11) {
+    sql += ` AND (document = ? OR document LIKE ?)`;
+    params.push(numericCpf, `%${numericCpf}%`);
+  } else if (numericCpf.length >= 3 && /^\d+$/.test(term.replace(/[.-]/g, ""))) {
+    sql += ` AND (document LIKE ? OR CAST(registration_number AS CHAR) LIKE ?)`;
+    params.push(`%${numericCpf}%`, `%${numericCpf}%`);
+  } else if (words.length > 0) {
+    const wordClauses = words.map(() => `name LIKE ?`).join(" AND ");
+    sql += ` AND (${wordClauses} OR document LIKE ?)`;
+    words.forEach((w) => params.push(`%${w}%`));
+    params.push(`%${term}%`);
+  } else {
+    sql += ` AND (name LIKE ? OR registration_number LIKE ?)`;
+    params.push(`%${term}%`, `%${term}%`);
+  }
+
+  sql += ` ORDER BY (CASE WHEN status = 'Ativo' THEN 0 ELSE 1 END) ASC, name ASC LIMIT 30`;
+
+  let [rows] = await pool.query<any[]>(sql, params);
+
+  // Fallback se não encontrar em cooperados
+  if (rows.length === 0 && (numericCpf.length >= 3 || words.length > 0)) {
+    let alocSql = `
+      SELECT DISTINCT document, nome AS name, matricula AS registration_number,
+             tomador_nome AS contract_name, cargo AS position,
+             'Ativo' AS status
+      FROM easycoop_alocacoes
+      WHERE 1=1
+    `;
+    const alocParams: any[] = [];
+    if (numericCpf.length === 11) {
+      alocSql += ` AND (document = ? OR document LIKE ?)`;
+      alocParams.push(numericCpf, `%${numericCpf}%`);
+    } else if (words.length > 0) {
+      const wordClauses = words.map(() => `nome LIKE ?`).join(" AND ");
+      alocSql += ` AND (${wordClauses})`;
+      words.forEach((w) => alocParams.push(`%${w}%`));
+    }
+    alocSql += ` ORDER BY nome ASC LIMIT 25`;
+    try {
+      const [alocRows] = await pool.query<any[]>(alocSql, alocParams);
+      rows = alocRows;
+    } catch {}
+  }
+
+  return rows;
+}
+
+/**
+ * Helper para calcular tempo na cooperativa
+ */
+function calcularTempoCooperativa(dtAdmissao?: string | null, dtDesligamento?: string | null) {
+  if (!dtAdmissao) return { dias: 0, formatado: "Não informado" };
+
+  try {
+    const inicio = new Date(dtAdmissao);
+    const fim = dtDesligamento ? new Date(dtDesligamento) : new Date();
+
+    if (isNaN(inicio.getTime())) return { dias: 0, formatado: "Não informado" };
+
+    const diffMs = Math.max(0, fim.getTime() - inicio.getTime());
+    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const anos = Math.floor(dias / 365.25);
+    const meses = Math.floor((dias % 365.25) / 30.4375);
+    const diasRest = Math.floor((dias % 365.25) % 30.4375);
+
+    const partes = [];
+    if (anos > 0) partes.push(`${anos} ${anos === 1 ? "ano" : "anos"}`);
+    if (meses > 0) partes.push(`${meses} ${meses === 1 ? "mês" : "meses"}`);
+    if (diasRest > 0 || partes.length === 0) partes.push(`${diasRest} ${diasRest === 1 ? "dia" : "dias"}`);
+
+    return {
+      dias,
+      formatado: `${dias.toLocaleString("pt-BR")} dias (${partes.join(", ")})`,
+    };
+  } catch {
+    return { dias: 0, formatado: "Não informado" };
+  }
+}
+
+/**
+ * Retorna o dossiê 360° completo do cooperado
+ */
+export async function getEasycoopCooperadoFull(cpf: string) {
+  const numericCpf = cpf.replace(/\D/g, "");
+  if (!numericCpf) throw new Error("CPF inválido.");
+
+  // 1. Dados cadastrais consolidados no MySQL
+  let [rows] = await pool.query<any[]>(
+    "SELECT * FROM cooperados WHERE document = ? LIMIT 1",
+    [numericCpf]
+  );
+  let base: any = null;
+  if (rows.length === 0) {
+    const [alocRows] = await pool.query<any[]>(
+      `SELECT document, matricula AS registration_number, nome AS name, cargo AS position,
+              tomador_nome AS contract_name,
+              (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 'Ativo' ELSE 'Inativo' END) AS status,
+              data_inicio AS admission_date,
+              '450' AS bank_code, 'BANCO OWL' AS bank_name, '0001' AS agency,
+              matricula AS account_number, '3' AS account_digit, 'Conta-Corrente' AS account_type,
+              document AS pix_key
+       FROM easycoop_alocacoes
+       WHERE document = ?
+       ORDER BY (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC, data_inicio DESC
+       LIMIT 1`,
+      [numericCpf]
+    );
+    if (alocRows.length === 0) {
+      throw new Error("Cooperado não encontrado.");
+    }
+    base = alocRows[0];
+  } else {
+    base = rows[0];
+  }
+
+  // 2. Telefone com fallback automático para o WhatsApp caso vazio
+  const telefoneConsolidado = base.secondary_phone || base.whatsapp_number || "-";
+
+  // 3. Dependentes (easycoop_dependentes)
+  const [dependentes] = await pool.query<any[]>(
+    "SELECT nome, cpf, sexo, DATE_FORMAT(data_nascimento, '%Y-%m-%d') AS data_nascimento, deduz_irrf, tem_convenio FROM easycoop_dependentes WHERE document = ?",
+    [numericCpf]
+  );
+
+  // 4. Histórico de Alocações em Contratos/Tomadores (easycoop_alocacoes)
+  const [alocacoes] = await pool.query<any[]>(
+    `SELECT cliente_id, contrato_id, tomador_nome, contrato_descricao, contrato_numero,
+            cargo, cbo, valor_base, horas, 
+            DATE_FORMAT(data_inicio, '%Y-%m-%d') AS data_inicio, 
+            DATE_FORMAT(data_fim, '%Y-%m-%d') AS data_fim, 
+            CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 'Ativo' ELSE 'Inativo' END AS status_alocacao,
+            CASE 
+              WHEN UPPER(contrato_descricao) LIKE '%DESCANSO%' OR UPPER(contrato_descricao) LIKE '%DAR%' THEN 4
+              WHEN UPPER(contrato_descricao) LIKE '%SOBRA%' THEN 3
+              WHEN UPPER(contrato_descricao) LIKE '%COORDENA%' THEN 2
+              ELSE 1
+            END AS prioridade_tipo
+     FROM easycoop_alocacoes 
+     WHERE document = ? 
+     ORDER BY 
+       (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+       (CASE 
+         WHEN UPPER(contrato_descricao) LIKE '%DESCANSO%' OR UPPER(contrato_descricao) LIKE '%DAR%' THEN 4
+         WHEN UPPER(contrato_descricao) LIKE '%SOBRA%' THEN 3
+         WHEN UPPER(contrato_descricao) LIKE '%COORDENA%' THEN 2
+         ELSE 1
+       END) ASC,
+       data_inicio DESC,
+       id DESC`,
+    [numericCpf]
+  );
+
+  // 5. Garantir que descanso, sobras e coordenação não sobreponham cargos operacionais
+  alocacoes.forEach((a: any) => {
+    if (a.contrato_descricao && /SOBRA/i.test(a.contrato_descricao)) {
+      a.contrato_descricao = "DISTRIBUIÇÃO DE SOBRAS";
+    }
+    const isAuxiliar =
+      a.contrato_descricao?.toUpperCase().includes("DESCANSO") ||
+      a.contrato_descricao?.toUpperCase().includes("DAR") ||
+      a.contrato_descricao?.toUpperCase().includes("SOBRA");
+    if (isAuxiliar) {
+      a.cargo = null;
+      a.cbo = null;
+    }
+  });
+
+  // 6. Contrato Atual: Sempre operacional ativo. SOBRAS, DESCANSO e COORDENAÇÃO nunca são principais se houver contrato operacional
+  const contratoAtivo = alocacoes.find((a: any) => a.status_alocacao === "Ativo" && a.prioridade_tipo === 1)
+    || alocacoes.find((a: any) => a.prioridade_tipo === 1)
+    || alocacoes.find((a: any) => a.status_alocacao === "Ativo")
+    || alocacoes[0]
+    || null;
+
+  // 6. Tempo de Cooperativa
+  const tempoVida = calcularTempoCooperativa(base.admission_date, base.termination_date);
+
+  // 7. Documentos / Assinaturas (easycoop_documentos)
+  let documentos: any[] = [];
+  try {
+    const [docs] = await pool.query<any[]>(
+      "SELECT tipo_documento, status, DATE_FORMAT(data_criacao, '%Y-%m-%d') AS data_criacao, data_assinatura, finalizado FROM easycoop_documentos WHERE document = ?",
+      [numericCpf]
+    );
+    documentos = docs;
+  } catch {}
+
+  // 8. Quotas-Parte
+  const quotasConcluidas = base.quotas_concluidas === "S" || (base.quotas_pagas && base.quotas_pagas >= 10);
+  const quotasPagas = base.quotas_pagas || 0;
+  const quotasValor = Number(base.quotas_valor || 0);
+
+  const officialPosition = contratoAtivo?.cargo || base.position || "Cooperado";
+
+  let bankCode = base.bank_code;
+  let bankName = base.bank_name;
+  if (bankCode === "770" || bankCode === "450" || bankName?.includes("770") || bankName?.toUpperCase().includes("FITBANK") || bankName?.toUpperCase().includes("OWL")) {
+    bankCode = "450";
+    bankName = "BANCO OWL";
+  }
+
+  return {
+    ...base,
+    bank_code: bankCode,
+    bank_name: bankName,
+    gender: base.gender || "M",
+    position: officialPosition,
+    position_cadastral: base.position_cadastral || null,
+    secondary_phone: telefoneConsolidado,
+    tempo_cooperativa_dias: tempoVida.dias,
+    tempo_cooperativa_formatado: tempoVida.formatado,
+    contrato_atual: contratoAtivo,
+    cargo_contrato: officialPosition,
+    quotas_info: {
+      concluida: quotasConcluidas,
+      pagas: quotasPagas,
+      valor_total: quotasValor,
+      texto: quotasConcluidas
+        ? `10 de 10 Quotas (Integralizada - R$ ${quotasValor.toFixed(2)})`
+        : `${quotasPagas} de 10 Quotas (R$ ${quotasValor.toFixed(2)})`,
+    },
+    detalhes_erp: {
+      RG: base.rg_number || null,
+      ORGEMISSOR: base.rg_issuer || null,
+      SEXO: base.gender || "M",
+      PIS: base.pis_number || null,
+      CTPS: base.ctps_number || null,
+      TELREC: telefoneConsolidado,
+    },
+    dependentes,
+    alocacoes,
+    documentos,
+    auditoria: [],
+  };
+}
+
+/**
+ * Histórico financeiro e repasses do cooperado com filtros de período e contrato
+ */
+export async function getEasycoopFinancialHistory(
+  cpf: string,
+  ano?: number,
+  mes?: number,
+  tomador?: string
+) {
+  const numericCpf = cpf.replace(/\D/g, "");
+  if (!numericCpf) throw new Error("CPF inválido.");
+
+  try {
+    let whereClauses = "WHERE 1=1";
+    const params: any[] = [numericCpf];
+
+    if (ano && ano > 0) {
+      whereClauses += " AND base.ano = ?";
+      params.push(ano);
+    }
+    if (mes && mes > 0) {
+      whereClauses += " AND base.mes = ?";
+      params.push(mes);
+    }
+    if (tomador && tomador !== "TODOS") {
+      whereClauses += ` AND (
+        base.tomador = ? 
+        OR UPPER(base.tomador) = UPPER(?)
+        OR base.contrato_descricao = ? 
+        OR UPPER(base.contrato_descricao) = UPPER(?)
+        OR (
+          UPPER(?) LIKE '%SOBRA%' AND (
+            UPPER(base.contrato_descricao) LIKE '%SOBRA%'
+            OR EXISTS (
+              SELECT 1 FROM easycoop_lancamento_itens li 
+              WHERE li.document = ? AND li.ano = base.ano AND li.mes = base.mes AND li.folha = base.folha 
+                AND UPPER(li.descricao) LIKE '%SOBRA%'
+            )
+          )
+        )
+        OR (
+          UPPER(?) LIKE '%DESCANSO%' AND (
+            UPPER(base.contrato_descricao) LIKE '%DESCANSO%'
+            OR EXISTS (
+              SELECT 1 FROM easycoop_lancamento_itens li 
+              WHERE li.document = ? AND li.ano = base.ano AND li.mes = base.mes AND li.folha = base.folha 
+                AND (UPPER(li.descricao) LIKE '%DESCANSO%' OR UPPER(li.descricao) LIKE '%DAR%')
+            )
+          )
+        )
+      )`;
+      params.push(
+        tomador,
+        tomador,
+        tomador,
+        tomador,
+        tomador,
+        numericCpf,
+        tomador,
+        numericCpf
+      );
+    }
+
+    // 1. Fechamentos mensais com detecção precisa de contrato e rubricas analíticas
+    const [fechamentos] = await pool.query<any[]>(
+      `SELECT * FROM (
+        SELECT f.id, f.ano, f.mes, f.folha, f.tomador,
+               f.valor_bruto, f.valor_producao, f.outros_creditos, f.total_descontos,
+               f.ajuda_custo, f.inss, f.irrf, f.taxa_adm, f.valor_liquido,
+               DATE_FORMAT(f.data_pagamento, '%Y-%m-%d') AS data_pagamento,
+               f.comprovante_doc,
+               COALESCE(
+                 -- 1. Rubrica analítica de SOBRAS
+                 (SELECT 'DISTRIBUIÇÃO DE SOBRAS' 
+                  FROM easycoop_lancamento_itens li 
+                  WHERE li.document = f.document AND li.ano = f.ano AND li.mes = f.mes AND li.folha = f.folha 
+                    AND UPPER(li.descricao) LIKE '%SOBRA%' 
+                  LIMIT 1),
+                 -- 2. Rubrica analítica de DESCANSO
+                 (SELECT 'DESCANSO ANUAL REMUNERADO' 
+                  FROM easycoop_lancamento_itens li 
+                  WHERE li.document = f.document AND li.ano = f.ano AND li.mes = f.mes AND li.folha = f.folha 
+                    AND (UPPER(li.descricao) LIKE '%DESCANSO%' OR UPPER(li.descricao) LIKE '%DAR%')
+                  LIMIT 1),
+                 -- 3. Alocação ativa no período do fechamento (priorizando contrato operacional base)
+                 (SELECT a.contrato_descricao 
+                  FROM easycoop_alocacoes a 
+                  WHERE a.document = f.document 
+                    AND (a.tomador_nome = f.tomador OR UPPER(a.tomador_nome) = UPPER(f.tomador) OR UPPER(f.tomador) LIKE '%COOPEDU%')
+                    AND a.data_inicio <= LAST_DAY(CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+                    AND (a.data_fim IS NULL OR a.data_fim >= CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+                    AND UPPER(a.contrato_descricao) NOT LIKE '%DESCANSO%'
+                    AND UPPER(a.contrato_descricao) NOT LIKE '%SOBRA%'
+                  ORDER BY (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC, a.data_inicio DESC 
+                  LIMIT 1),
+                 -- 4. Alocação ativa no período (qualquer tipo)
+                 (SELECT a.contrato_descricao 
+                  FROM easycoop_alocacoes a 
+                  WHERE a.document = f.document 
+                    AND (a.tomador_nome = f.tomador OR UPPER(a.tomador_nome) = UPPER(f.tomador) OR UPPER(f.tomador) LIKE '%COOPEDU%')
+                    AND a.data_inicio <= LAST_DAY(CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+                    AND (a.data_fim IS NULL OR a.data_fim >= CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+                  ORDER BY (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC, a.data_inicio DESC 
+                  LIMIT 1),
+                 -- 5. Alocação histórica mais recente daquele tomador
+                 (SELECT a.contrato_descricao 
+                  FROM easycoop_alocacoes a 
+                  WHERE a.document = f.document 
+                    AND (a.tomador_nome = f.tomador OR UPPER(a.tomador_nome) = UPPER(f.tomador))
+                  ORDER BY (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC, a.data_inicio DESC 
+                  LIMIT 1),
+                 -- 6. Tabela de contratos
+                 (SELECT c.contrato_descricao 
+                  FROM easycoop_contratos c 
+                  WHERE c.tomador_nome = f.tomador OR UPPER(c.tomador_nome) = UPPER(f.tomador) 
+                  LIMIT 1),
+                 f.tomador
+               ) AS contrato_descricao
+        FROM easycoop_fechamentos f
+        WHERE f.document = ?
+      ) AS base
+      ${whereClauses}
+      ORDER BY base.ano DESC, base.mes DESC, base.folha DESC`,
+      params
+    );
+
+    // 2. Anos disponíveis com repasses para esse cooperado
+    const [anosRows] = await pool.query<any[]>(
+      "SELECT DISTINCT ano FROM easycoop_fechamentos WHERE document = ? ORDER BY ano DESC",
+      [numericCpf]
+    );
+
+    // 3. Tomadores / Contratos distintos com repasses para esse cooperado
+    const [tomadoresRows] = await pool.query<any[]>(
+      `SELECT DISTINCT tomador FROM easycoop_fechamentos WHERE document = ? AND tomador IS NOT NULL AND tomador <> '' ORDER BY tomador ASC`,
+      [numericCpf]
+    );
+
+    // 4. Lista consolidada de contratos reais do cooperado (para botões do filtro)
+    const [contratosRows] = await pool.query<any[]>(
+      `SELECT DISTINCT tomador AS nome
+       FROM easycoop_fechamentos
+       WHERE document = ? AND tomador IS NOT NULL AND tomador <> ''
+       UNION
+       SELECT DISTINCT contrato_descricao AS nome
+       FROM easycoop_alocacoes
+       WHERE document = ? AND status_alocacao IN ('Ativo', 'S', 'A') AND contrato_descricao IS NOT NULL AND contrato_descricao <> ''
+       UNION
+       SELECT DISTINCT COALESCE(
+         (SELECT 'DISTRIBUIÇÃO DE SOBRAS' 
+          FROM easycoop_lancamento_itens li 
+          WHERE li.document = f.document AND li.ano = f.ano AND li.mes = f.mes AND li.folha = f.folha 
+            AND UPPER(li.descricao) LIKE '%SOBRA%' 
+          LIMIT 1),
+         (SELECT 'DESCANSO ANUAL REMUNERADO' 
+          FROM easycoop_lancamento_itens li 
+          WHERE li.document = f.document AND li.ano = f.ano AND li.mes = f.mes AND li.folha = f.folha 
+            AND (UPPER(li.descricao) LIKE '%DESCANSO%' OR UPPER(li.descricao) LIKE '%DAR%')
+          LIMIT 1),
+         (SELECT a.contrato_descricao 
+          FROM easycoop_alocacoes a 
+          WHERE a.document = f.document 
+            AND (a.tomador_nome = f.tomador OR UPPER(a.tomador_nome) = UPPER(f.tomador) OR UPPER(f.tomador) LIKE '%COOPEDU%')
+            AND a.data_inicio <= LAST_DAY(CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+            AND (a.data_fim IS NULL OR a.data_fim >= CONCAT(f.ano, '-', LPAD(f.mes, 2, '0'), '-01'))
+            AND UPPER(a.contrato_descricao) NOT LIKE '%DESCANSO%'
+            AND UPPER(a.contrato_descricao) NOT LIKE '%SOBRA%'
+          ORDER BY (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC, a.data_inicio DESC 
+          LIMIT 1),
+         f.tomador
+       ) AS nome
+       FROM easycoop_fechamentos f
+       WHERE f.document = ?
+       ORDER BY nome ASC`,
+      [numericCpf, numericCpf, numericCpf]
+    );
+
+    // Totais do período filtrado
+    let totalBruto = 0;
+    let totalLiquido = 0;
+    let totalInss = 0;
+    let totalIrrf = 0;
+    let totalTaxaAdm = 0;
+
+    for (const f of fechamentos) {
+      totalBruto += Number(f.valor_bruto || 0);
+      totalLiquido += Number(f.valor_liquido || 0);
+      totalInss += Number(f.inss || 0);
+      totalIrrf += Number(f.irrf || 0);
+      totalTaxaAdm += Number(f.taxa_adm || 0);
+    }
+
+    return {
+      fechamentos,
+      anos: anosRows.map((a: any) => a.ano),
+      tomadores: tomadoresRows.map((t: any) => t.tomador),
+      contratos: contratosRows.map((c: any) => c.nome),
+      totais: {
+        totalBruto,
+        totalLiquido,
+        totalInss,
+        totalIrrf,
+        totalTaxaAdm,
+        qtdRecibos: fechamentos.length,
+      },
+    };
+  } catch (err: any) {
+    console.warn(`[EasyCoop Financial Warning] Retornando fallback seguro para CPF ${numericCpf}:`, err.message);
+    return {
+      fechamentos: [],
+      anos: [],
+      tomadores: [],
+      contratos: [],
+      totais: {
+        totalBruto: 0,
+        totalLiquido: 0,
+        totalInss: 0,
+        totalIrrf: 0,
+        totalTaxaAdm: 0,
+        qtdRecibos: 0,
+      },
+    };
+  }
+}
+
+/**
+ * Detalhamento de rubricas analíticas (itens) de um fechamento mensal
+ */
+export async function getEasycoopLancamentoItens(cpf: string, ano: number, mes: number, folha: number) {
+  const numericCpf = cpf.replace(/\D/g, "");
+
+  // 1. Buscar itens detalhados gravados em easycoop_lancamento_itens
+  const [itensRows] = await pool.query<any[]>(
+    `SELECT cod_lancamento, descricao, tipo, valor
+     FROM easycoop_lancamento_itens
+     WHERE document = ? AND ano = ? AND mes = ? AND folha = ?
+     ORDER BY tipo ASC, valor DESC`,
+    [numericCpf, ano, mes, folha]
+  );
+
+  if (itensRows.length > 0) {
+    return itensRows.map((it) => ({
+      codigo: it.cod_lancamento,
+      descricao: it.descricao,
+      tipo: it.tipo === "D" ? "D" : "C",
+      valor: Number(it.valor || 0),
+    }));
+  }
+
+  // 2. Fallback caso não haja itens gravados em easycoop_lancamento_itens
+  const [rows] = await pool.query<any[]>(
+    "SELECT * FROM easycoop_fechamentos WHERE document = ? AND ano = ? AND mes = ? AND folha = ? LIMIT 1",
+    [numericCpf, ano, mes, folha]
+  );
+
+  if (rows.length === 0) return [];
+  const f = rows[0];
+
+  const itens: any[] = [];
+  if (Number(f.valor_producao || f.valor_bruto) > 0) {
+    itens.push({
+      descricao: "Produtividade / Produção Mensal",
+      tipo: "C",
+      valor: Number(f.valor_producao || f.valor_bruto),
+    });
+  }
+  if (Number(f.outros_creditos) > 0) {
+    itens.push({
+      descricao: "Benefícios / Adicionais / Bônus",
+      tipo: "C",
+      valor: Number(f.outros_creditos),
+    });
+  }
+  if (Number(f.ajuda_custo) > 0) {
+    itens.push({
+      descricao: "Ajuda de Custo Operacional",
+      tipo: "C",
+      valor: Number(f.ajuda_custo),
+    });
+  }
+  if (Number(f.inss) > 0) {
+    itens.push({
+      descricao: "Retenção INSS Previdência Social",
+      tipo: "D",
+      valor: Number(f.inss),
+    });
+  }
+  if (Number(f.irrf) > 0) {
+    itens.push({
+      descricao: "Retenção IRRF Imposto de Renda",
+      tipo: "D",
+      valor: Number(f.irrf),
+    });
+  }
+  if (Number(f.taxa_adm) > 0) {
+    itens.push({
+      descricao: "Taxa de Administração Cooperativa",
+      tipo: "D",
+      valor: Number(f.taxa_adm),
+    });
+  }
+
+  return itens;
+}
+
+/**
+ * Consulta de Folha de Pagamento analítica para Demonstrativo de Produtividade
+ */
+export async function getEasycoopCooperadoFolha(
+  cpf: string,
+  ano?: number,
+  mes?: number,
+  folha: number = 1
+) {
+  const numericCpf = cpf.replace(/\D/g, "");
+  if (!numericCpf) throw new Error("CPF inválido.");
+
+  // Se ano e mês não informados, pegar o fechamento mais recente
+  let query = `
+    SELECT f.*, DATE_FORMAT(f.data_pagamento, '%Y-%m-%d') AS data_pagamento_fmt
+    FROM easycoop_fechamentos f
+    WHERE f.document = ?
+  `;
+  const params: any[] = [numericCpf];
+
+  if (ano && ano > 0 && mes && mes > 0) {
+    query += " AND f.ano = ? AND f.mes = ? AND f.folha = ?";
+    params.push(ano, mes, folha);
+  } else {
+    query += " ORDER BY f.ano DESC, f.mes DESC, f.folha DESC LIMIT 1";
+  }
+
+  const [fechamentos] = await pool.query<any[]>(query, params);
+
+  // Lista de todas as competências disponíveis para o seletor da folha
+  const [competencias] = await pool.query<any[]>(
+    `SELECT DISTINCT ano, mes, folha, tomador, valor_liquido
+     FROM easycoop_fechamentos
+     WHERE document = ?
+     ORDER BY ano DESC, mes DESC, folha DESC`,
+    [numericCpf]
+  );
+
+  if (fechamentos.length === 0) {
+    return {
+      folha: null,
+      competencias: competencias || [],
+    };
+  }
+
+  const f = fechamentos[0];
+
+  // Cooperado base para cabeçalho do contracheque
+  const [coopRows] = await pool.query<any[]>(
+    "SELECT * FROM cooperados WHERE document = ? LIMIT 1",
+    [numericCpf]
+  );
+  const c = coopRows[0] || {};
+
+  // 2. Buscar cargo oficial no contrato ativo do cooperado
+  const [alocRows] = await pool.query<any[]>(
+    `SELECT cargo, contrato_descricao
+     FROM easycoop_alocacoes
+     WHERE document = ?
+       AND UPPER(contrato_descricao) NOT LIKE '%DESCANSO%'
+       AND UPPER(contrato_descricao) NOT LIKE '%DAR%'
+       AND UPPER(contrato_descricao) NOT LIKE '%SOBRA%'
+     ORDER BY (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+              data_inicio DESC
+     LIMIT 1`,
+    [numericCpf]
+  );
+  const officialCargo = alocRows[0]?.cargo || c.position || "Cooperado";
+
+  // 3. Proventos e Descontos estruturados a partir das rubricas oficiais (easycoop_lancamento_itens)
+  const proventos: any[] = [];
+  const descontos: any[] = [];
+
+  const [rubricasRows] = await pool.query<any[]>(
+    `SELECT cod_lancamento, descricao, tipo, valor
+     FROM easycoop_lancamento_itens
+     WHERE document = ? AND ano = ? AND mes = ? AND folha = ?
+     ORDER BY tipo ASC, valor DESC`,
+    [numericCpf, f.ano, f.mes, f.folha]
+  );
+
+  if (rubricasRows.length > 0) {
+    for (const it of rubricasRows) {
+      const cod = String(it.cod_lancamento || "").replace(/\.0$/, "");
+      const val = Number(it.valor || 0);
+      if (it.tipo === "C") {
+        proventos.push({
+          codigo: cod,
+          descricao: it.descricao,
+          ref: "-",
+          valor: val,
+        });
+      } else {
+        descontos.push({
+          codigo: cod,
+          descricao: it.descricao,
+          ref: cod === "200" ? "11%" : "-",
+          valor: val,
+        });
+      }
+    }
+  } else {
+    // Fallback sintético caso não haja itens analíticos cadastrados
+    const bruto = Number(f.valor_bruto || 0);
+    const ajuda = Number(f.ajuda_custo || 0);
+    const inss = Number(f.inss || 0);
+    const irrf = Number(f.irrf || 0);
+    const taxaAdm = Number(f.taxa_adm || 0);
+
+    if (bruto > 0) {
+      proventos.push({ codigo: "101", descricao: "PRODUÇÃO COOPERATIVA / HORAS", ref: "-", valor: bruto });
+    }
+    if (ajuda > 0) {
+      proventos.push({ codigo: "105", descricao: "AJUDA DE CUSTO", ref: "-", valor: ajuda });
+    }
+    if (inss > 0) {
+      descontos.push({ codigo: "201", descricao: "INSS - PREVIDÊNCIA SOCIAL", ref: "11%", valor: inss });
+    }
+    if (irrf > 0) {
+      descontos.push({ codigo: "202", descricao: "IRRF - IMPOSTO DE RENDA RETIDO", ref: "-", valor: irrf });
+    }
+    if (taxaAdm > 0) {
+      descontos.push({ codigo: "301", descricao: "TAXA ADMINISTRATIVA COOPERATIVA", ref: "-", valor: taxaAdm });
+    }
+  }
+
+  const totalProventos = proventos.reduce((acc, it) => acc + it.valor, 0);
+  const totalDescontos = descontos.reduce((acc, it) => acc + it.valor, 0);
+  const liquido = Number(f.valor_liquido || (totalProventos - totalDescontos));
+
+  const baseInss = proventos.find((p) => p.codigo === "100" || p.codigo === "101")?.valor || totalProventos;
+  const inssVal = descontos.find((d) => d.codigo === "200" || d.codigo === "201")?.valor || 0;
+  const baseIrrf = baseInss > inssVal ? baseInss - inssVal : 0;
+
+  return {
+    folha: {
+      id: f.id,
+      ano: f.ano,
+      mes: f.mes,
+      folha: f.folha,
+      competencia_str: `${String(f.mes).padStart(2, "0")}/${f.ano}`,
+      tomador: f.tomador || c.contract_name || "Coopedu Sede",
+      data_pagamento: f.data_pagamento_fmt || "-",
+      comprovante_doc: f.comprovante_doc || "-",
+      cooperado: {
+        nome: c.name,
+        cpf: c.document,
+        matricula: c.registration_number || f.matricula,
+        cargo: officialCargo,
+        banco: (c.bank_code === "770" || c.bank_code === "450" || c.bank_name?.includes("770") || c.bank_name?.toUpperCase().includes("FITBANK") || c.bank_name?.toUpperCase().includes("OWL"))
+          ? "450 - BANCO OWL"
+          : (c.bank_name || "Banco não informado"),
+        agencia: c.agency,
+        conta: c.account_number,
+        pix: c.pix_key,
+      },
+      proventos,
+      descontos,
+      totais: {
+        totalProventos,
+        totalDescontos,
+        valorLiquido: liquido,
+      },
+      bases_calculo: {
+        baseInss: Number(baseInss || 0),
+        baseIrrf: Number(baseIrrf || 0),
+      },
+    },
+    competencias,
+  };
+}
+
+/**
+ * Consulta de Eventos eSocial do cooperado com filtros
+ */
+export async function getEasycoopCooperadoEsocial(
+  cpf: string,
+  ano?: number,
+  mes?: number,
+  evento?: string
+) {
+  const numericCpf = cpf.replace(/\D/g, "");
+  if (!numericCpf) throw new Error("CPF inválido.");
+
+  try {
+    let whereClauses = "WHERE document = ?";
+    const params: any[] = [numericCpf];
+
+    if (ano && ano > 0) {
+      whereClauses += " AND ano = ?";
+      params.push(ano);
+    }
+    if (mes && mes > 0) {
+      whereClauses += " AND mes = ?";
+      params.push(mes);
+    }
+    if (evento && evento !== "TODOS") {
+      whereClauses += " AND evento = ?";
+      params.push(evento);
+    }
+
+    // Lista de eventos filtrados
+    const [eventos] = await pool.query<any[]>(
+      `SELECT id, evento, 
+              DATE_FORMAT(data_envio, '%Y-%m-%d') AS data_envio,
+              hora_envio, ano, mes, enviado, nro_protocolo, nro_recibo, status, erro_envio
+       FROM easycoop_esocial
+       ${whereClauses}
+       ORDER BY ano DESC, mes DESC, id DESC`,
+      params
+    );
+
+    // Métricas gerais de eSocial desse cooperado
+    const [statsRows] = await pool.query<any[]>(
+      `SELECT 
+          COUNT(*) AS total_transmissoes,
+          SUM(CASE WHEN status LIKE '%Recibo%' THEN 1 ELSE 0 END) AS total_aceitos,
+          SUM(CASE WHEN status LIKE '%Erro%' OR status LIKE '%Rejeitado%' THEN 1 ELSE 0 END) AS total_erros,
+          SUM(CASE WHEN status = 'Enviado' OR status = 'Pendente' THEN 1 ELSE 0 END) AS total_pendentes
+       FROM easycoop_esocial
+       WHERE document = ?`,
+      [numericCpf]
+    );
+
+    // Tipos de eventos distintos
+    const [tiposRows] = await pool.query<any[]>(
+      "SELECT DISTINCT evento FROM easycoop_esocial WHERE document = ? ORDER BY evento ASC",
+      [numericCpf]
+    );
+
+    // Anos disponíveis
+    const [anosRows] = await pool.query<any[]>(
+      "SELECT DISTINCT ano FROM easycoop_esocial WHERE document = ? ORDER BY ano DESC",
+      [numericCpf]
+    );
+
+    const stats = statsRows[0] || {};
+
+    return {
+      eventos,
+      metricas: {
+        totalTransmissoes: Number(stats.total_transmissoes || 0),
+        totalAceitos: Number(stats.total_aceitos || 0),
+        totalErros: Number(stats.total_erros || 0),
+        totalPendentes: Number(stats.total_pendentes || 0),
+        ultimoProtocolo: eventos[0]?.nro_protocolo || "-",
+      },
+      tiposEventos: tiposRows.map((t: any) => t.evento),
+      anos: anosRows.map((a: any) => a.ano),
+    };
+  } catch (err: any) {
+    console.warn(`[EasyCoop eSocial Warning] Retornando fallback seguro para CPF ${numericCpf}:`, err.message);
+    return {
+      eventos: [],
+      metricas: {
+        totalTransmissoes: 0,
+        totalAceitos: 0,
+        totalErros: 0,
+        totalPendentes: 0,
+        ultimoProtocolo: "-",
+      },
+      tiposEventos: [],
+      anos: [],
+    };
+  }
+}
+
+/**
+ * Lista contratos com paginação e busca por nome/tomador/número
+ */
+export async function listEasycoopContratos(search: string = "", page: number = 1, pageSize: number = 20) {
+  const cleanSearch = search.trim();
+  const offset = (page - 1) * pageSize;
+
+  let whereClause = "WHERE 1=1";
+  const params: any[] = [];
+
+  if (cleanSearch) {
+    whereClause += ` AND (
+      contrato_descricao LIKE ?
+      OR tomador_nome LIKE ?
+      OR numero_doc LIKE ?
+      OR cidade LIKE ?
+    )`;
+    const wildcard = `%${cleanSearch}%`;
+    params.push(wildcard, wildcard, wildcard, wildcard);
+  }
+
+  const [countRows] = await pool.query<any[]>(
+    `SELECT COUNT(*) AS total FROM easycoop_contratos ${whereClause}`,
+    params
+  );
+  const total = countRows[0]?.total || 0;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  const [contratos] = await pool.query<any[]>(
+    `SELECT cliente_id, contrato_id, numero_doc, tomador_nome, contrato_descricao,
+            cidade, uf, 
+            DATE_FORMAT(data_inicio, '%Y-%m-%d') AS data_inicio, 
+            DATE_FORMAT(data_fim, '%Y-%m-%d') AS data_fim, 
+            status, perc_taxa_adm, total_cooperados, cooperados_ativos
+     FROM easycoop_contratos
+     ${whereClause}
+     ORDER BY total_cooperados DESC, data_inicio DESC
+     LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset]
+  );
+
+  return {
+    contratos,
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
+
+/**
+ * Detalhes de um contrato específico
+ */
+export async function getEasycoopContratoDetails(clienteId: number, contratoId: number) {
+  const [rows] = await pool.query<any[]>(
+    `SELECT cliente_id, contrato_id, numero_doc, tomador_nome, tomador_razao, tomador_cnpj,
+            contrato_descricao, endereco, bairro, cidade, uf, cep, telefone, contato_responsavel,
+            DATE_FORMAT(data_inicio, '%Y-%m-%d') AS data_inicio, 
+            DATE_FORMAT(data_fim, '%Y-%m-%d') AS data_fim, 
+            status, perc_taxa_adm, valor_taxa_adm, dia_pagamento, centro_custo,
+            total_cooperados, cooperados_ativos
+     FROM easycoop_contratos
+     WHERE cliente_id = ? AND contrato_id = ?
+     LIMIT 1`,
+    [clienteId, contratoId]
+  );
+
+  if (rows.length === 0) throw new Error("Contrato não encontrado.");
+  return rows[0];
+}
+
+/**
+ * Lista paginada dos cooperados alocados no contrato
+ */
+export async function getEasycoopContratoCooperados(
+  clienteId: number,
+  contratoId: number,
+  page: number = 1,
+  pageSize: number = 20,
+  search: string = ""
+) {
+  const cleanSearch = search.trim();
+  const offset = (page - 1) * pageSize;
+
+  let whereClause = "WHERE cliente_id = ? AND contrato_id = ?";
+  const params: any[] = [clienteId, contratoId];
+
+  if (cleanSearch) {
+    const numCpf = cleanSearch.replace(/\D/g, "");
+    if (numCpf.length >= 3) {
+      whereClause += " AND (nome LIKE ? OR document LIKE ? OR matricula LIKE ?)";
+      params.push(`%${cleanSearch}%`, `%${numCpf}%`, `%${cleanSearch}%`);
+    } else {
+      whereClause += " AND (nome LIKE ? OR matricula LIKE ?)";
+      params.push(`%${cleanSearch}%`, `%${cleanSearch}%`);
+    }
+  }
+
+  const [countRows] = await pool.query<any[]>(
+    `SELECT COUNT(*) AS total FROM easycoop_alocacoes ${whereClause}`,
+    params
+  );
+  const total = countRows[0]?.total || 0;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  const [cooperados] = await pool.query<any[]>(
+    `SELECT matricula, nome, document AS cpf, cargo, cbo, valor_base, horas,
+            DATE_FORMAT(data_inicio, '%Y-%m-%d') AS data_inicio, 
+            DATE_FORMAT(data_fim, '%Y-%m-%d') AS data_fim, 
+            status_alocacao
+     FROM easycoop_alocacoes
+     ${whereClause}
+     ORDER BY status_alocacao ASC, nome ASC
+     LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset]
+  );
+
+  return {
+    cooperados,
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
+
+/**
+ * Retorna as folhas analíticas de um período (para exportação em lote de demonstrativos em PDF)
+ */
+export async function getEasycoopFolhasPeriodo(
+  cpf: string, 
+  ano?: number, 
+  mes?: number, 
+  competencias?: { ano: number; mes: number; folha?: number }[]
+) {
+  const numericCpf = cpf.replace(/\D/g, "");
+  if (!numericCpf) return [];
+
+  let rows: any[] = [];
+  if (Array.isArray(competencias) && competencias.length > 0) {
+    rows = competencias.map((c) => ({
+      ano: Number(c.ano),
+      mes: Number(c.mes),
+      folha: Number(c.folha || 1),
+    }));
+  } else {
+    let query = "SELECT ano, mes, folha FROM easycoop_fechamentos WHERE document = ?";
+    const params: any[] = [numericCpf];
+    if (ano && ano > 0) {
+      query += " AND ano = ?";
+      params.push(ano);
+    }
+    if (mes && mes > 0) {
+      query += " AND mes = ?";
+      params.push(mes);
+    }
+    query += " ORDER BY ano DESC, mes DESC, folha DESC LIMIT 36";
+    const [dbRows] = await pool.query<any[]>(query, params);
+    rows = dbRows;
+  }
+
+  const folhasList: any[] = [];
+  for (const r of rows) {
+    const folhaData = await getEasycoopCooperadoFolha(numericCpf, r.ano, r.mes, r.folha || 1);
+    if (folhaData && folhaData.folha) {
+      folhasList.push(folhaData.folha);
+    }
+  }
+  return folhasList;
+}
+

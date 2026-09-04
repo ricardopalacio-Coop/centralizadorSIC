@@ -18,7 +18,6 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName=C:\CentralizadorSIC
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=..\package.json
 OutputDir=..\dist_installer
 OutputBaseFilename=Centralizador_SIC_Setup_Cliente_Servidor
 SetupIconFile=app_icon.ico
@@ -75,8 +74,10 @@ Name: "{group}\Desinstalar Centralizador SIC"; Filename: "{uninstallexe}"
 
 [Run]
 Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""Centralizador SIC (Porta 3005)"" dir=in action=allow protocol=TCP localport=3005"; Components: server; Flags: runhidden
-Filename: "{app}\Start.bat"; Description: "Iniciar o Servidor Centralizador SIC agora"; Components: server; Flags: shellexec postinstall skipifsilent
 Filename: "{app}\client-desktop\Centralizador_SIC_Client.bat"; Description: "Iniciar o Cliente Desktop do Centralizador SIC agora"; Components: client; Flags: shellexec postinstall skipifsilent
+Filename: "{app}\Start.bat"; Description: "Iniciar o Servidor Centralizador SIC Backend (Apenas se este PC for o Servidor)"; Components: server; Flags: shellexec postinstall skipifsilent unchecked
+
 
 [UninstallRun]
-Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Centralizador SIC (Porta 3005)"""; Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Centralizador SIC (Porta 3005)"""; Flags: runhidden; RunOnceId: "DelFirewallRuleCentralizadorSIC"
+

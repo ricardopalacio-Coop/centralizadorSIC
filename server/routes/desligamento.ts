@@ -1,8 +1,12 @@
 import { Router } from "express";
+import { authenticateToken } from "../middlewares/auth";
 import { consultarDesligamentoEProposta, cleanCpf } from "../services/desligamentoService";
 import { generatePropostaAdesaoPdf, generateTermoDesligamentoPdf } from "../services/pdfService";
 
 const router = Router();
+
+// Todas as rotas de desligamento e propostas exigem autenticação do usuário
+router.use(authenticateToken);
 
 /**
  * POST /api/desligamento/consultar

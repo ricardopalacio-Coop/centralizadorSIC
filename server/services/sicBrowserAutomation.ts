@@ -2,11 +2,20 @@ import puppeteer from "puppeteer-core";
 import axios from "axios";
 import fs from "fs";
 import { cleanCpf } from "./sicApi";
+import { pool } from "../db";
 
 const SIC_USER_EMAIL = process.env.SIC_USER_EMAIL || "atendimento@coopedu.com.br";
 const SIC_USER_PASSWORD = process.env.SIC_USER_PASSWORD || "Coopedu2026@";
 
 function getExecutablePath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const linuxChromium = "/usr/bin/chromium";
+  if (fs.existsSync(linuxChromium)) return linuxChromium;
+  const linuxChromiumBrowser = "/usr/bin/chromium-browser";
+  if (fs.existsSync(linuxChromiumBrowser)) return linuxChromiumBrowser;
+
   const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
   if (fs.existsSync(chromePath)) return chromePath;
@@ -23,89 +32,353 @@ interface CacheSession {
 let sessionCache: CacheSession | null = null;
 
 /**
- * Realiza o login no portal do SIC via Puppeteer stealth e obtém a sessão autenticada do Atendimento
+ * Decodifica o payload de um JWT sem validar assinatura (apenas leitura do exp e claims)
+ */
+export function parseJwtPayload(token: string): any {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const jsonStr = Buffer.from(base64, "base64").toString("utf-8");
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normaliza qualquer entrada de cookie ou token (URI encoded, JSON ou JWT puro)
+ */
+export function normalizeSicTokenAndCookie(rawInput: string): { jwtToken: string; cookieHeader: string; expiresAt: number } | null {
+  if (!rawInput || typeof rawInput !== "string") return null;
+  const trimmed = rawInput.trim();
+
+  let tokenStr = "";
+
+  // 1. Se for o formato URI encoded ou JSON do cookie coopedu-auth-prod
+  try {
+    let decoded = trimmed;
+    if (trimmed.includes("%22") || trimmed.includes("%7B")) {
+      decoded = decodeURIComponent(trimmed);
+    }
+    if (decoded.startsWith("coopedu-auth-prod=")) {
+      decoded = decoded.replace("coopedu-auth-prod=", "").trim();
+      if (decoded.includes("%22") || decoded.includes("%7B")) {
+        decoded = decodeURIComponent(decoded);
+      }
+    }
+    if (decoded.startsWith("{")) {
+      const parsed = JSON.parse(decoded);
+      if (parsed.value) tokenStr = parsed.value;
+    }
+  } catch {}
+
+  // 2. Se for o próprio token JWT
+  if (!tokenStr) {
+    if (trimmed.startsWith("eyJ")) {
+      tokenStr = trimmed;
+    } else if (trimmed.includes("eyJ")) {
+      const m = trimmed.match(/eyJ[a-zA-Z0-9_\-\.]+/);
+      if (m) tokenStr = m[0];
+    }
+  }
+
+  if (!tokenStr || !tokenStr.startsWith("eyJ")) return null;
+
+  const payload = parseJwtPayload(tokenStr);
+  let expiresAt = Date.now() + 50 * 60 * 1000;
+  if (payload?.exp && typeof payload.exp === "number") {
+    expiresAt = payload.exp * 1000;
+  }
+
+  const cookieVal = encodeURIComponent(
+    JSON.stringify({
+      key: "coopedu-auth-prod",
+      value: tokenStr,
+      endDate: new Date(expiresAt).toISOString(),
+    })
+  );
+
+  return {
+    jwtToken: tokenStr,
+    cookieHeader: `coopedu-auth-prod=${cookieVal}`,
+    expiresAt,
+  };
+}
+
+/**
+ * Salva a sessão web do SIC no banco de dados e atualiza o cache
+ */
+export async function saveSicSession(rawInput: string): Promise<{ success: boolean; message: string; expiresAt: string; user?: string }> {
+  const normalized = normalizeSicTokenAndCookie(rawInput);
+  if (!normalized) {
+    throw new Error("Formato inválido do Token ou Cookie do SIC. Certifique-se de colar o cookie 'coopedu-auth-prod' completo ou o Token JWT iniciado com 'eyJ'.");
+  }
+
+  // Testa o token fazendo uma consulta leve no portal do SIC
+  try {
+    const testRes = await axios.get(
+      "https://ui.coopedu.app.br/api/cooperado/listar?search=000&pageNumber=1&pageSize=1",
+      {
+        headers: {
+          Authorization: `Bearer ${normalized.jwtToken}`,
+          Cookie: normalized.cookieHeader,
+          Origin: "https://ui.coopedu.app.br",
+        },
+        timeout: 8000,
+      }
+    );
+    if (testRes.status !== 200) {
+      throw new Error(`Portal SIC retornou status HTTP ${testRes.status}`);
+    }
+  } catch (err: any) {
+    if (err.response?.status === 401) {
+      throw new Error("O token informado já expirou ou é inválido no portal do SIC (HTTP 401). Copie um token atualizado no navegador.");
+    }
+    console.warn("[SIC Session Warning] Teste de conectividade ao portal SIC retornou aviso:", err.message);
+  }
+
+  // Salva no banco centralizador_sic_db.system_settings
+  try {
+    await pool.query(
+      `INSERT INTO system_settings (setting_key, setting_value, updated_at) 
+       VALUES ('sic_web_session_token', ?, NOW()) 
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+      [normalized.jwtToken]
+    );
+    await pool.query(
+      `INSERT INTO system_settings (setting_key, setting_value, updated_at) 
+       VALUES ('sic_web_session_cookie', ?, NOW()) 
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
+      [normalized.cookieHeader]
+    );
+  } catch (dbErr: any) {
+    console.warn("[SIC Session DB Warning] Falha ao salvar em centralizador_sic_db.system_settings:", dbErr.message);
+  }
+
+  // Sincroniza também no helpdesk_local se disponível
+  try {
+    const hdDbName = process.env.HELPDESK_DB_NAME || "helpdesk_local";
+    await pool.query(
+      `INSERT INTO ${hdDbName}.system_settings (settingKey, settingValue, updatedAt) 
+       VALUES ('sic_web_session_token', ?, NOW()) 
+       ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue), updatedAt = NOW()`,
+      [normalized.jwtToken]
+    ).catch(() => {});
+    await pool.query(
+      `INSERT INTO ${hdDbName}.system_settings (settingKey, settingValue, updatedAt) 
+       VALUES ('sic_web_session_cookie', ?, NOW()) 
+       ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue), updatedAt = NOW()`,
+      [normalized.cookieHeader]
+    ).catch(() => {});
+  } catch {}
+
+  sessionCache = normalized;
+  const payload = parseJwtPayload(normalized.jwtToken);
+
+  console.log(`[SIC Session] ✅ Sessão do SIC atualizada com sucesso! Expira em: ${new Date(normalized.expiresAt).toISOString()}`);
+
+  return {
+    success: true,
+    message: "Sessão do portal SIC validada e salva com sucesso!",
+    expiresAt: new Date(normalized.expiresAt).toISOString(),
+    user: payload?.name || payload?.email || "Operador de Atendimento",
+  };
+}
+
+/**
+ * Consulta o status atual da sessão do portal SIC
+ */
+export async function getSicSessionStatus(): Promise<{
+  active: boolean;
+  expiresAt: string | null;
+  remainingMinutes: number;
+  user: string | null;
+  source: string;
+}> {
+  try {
+    const session = await getAuthenticatedSicSession().catch(() => null);
+    if (!session) {
+      return {
+        active: false,
+        expiresAt: null,
+        remainingMinutes: 0,
+        user: null,
+        source: "Nenhuma sessão ativa",
+      };
+    }
+
+    const payload = parseJwtPayload(session.jwtToken);
+    const expMs = payload?.exp ? payload.exp * 1000 : sessionCache?.expiresAt || 0;
+    const remainingMs = Math.max(0, expMs - Date.now());
+    const remainingMinutes = Math.floor(remainingMs / 60000);
+
+    return {
+      active: remainingMinutes > 0,
+      expiresAt: expMs ? new Date(expMs).toISOString() : null,
+      remainingMinutes,
+      user: payload?.name || payload?.email || "Operador Atendimento",
+      source: "Sessão Ativa",
+    };
+  } catch {
+    return {
+      active: false,
+      expiresAt: null,
+      remainingMinutes: 0,
+      user: null,
+      source: "Erro ao verificar",
+    };
+  }
+}
+
+/**
+ * Obtém a sessão autenticada do Atendimento no portal SIC com resolução multi-camadas
  */
 export async function getAuthenticatedSicSession(): Promise<{ jwtToken: string; cookieHeader: string }> {
   const now = Date.now();
-  if (sessionCache && sessionCache.expiresAt > now) {
+
+  // 1. Cache em memória ainda válido (com folga de 2 minutos)
+  if (sessionCache && sessionCache.expiresAt > (now + 120000)) {
     return { jwtToken: sessionCache.jwtToken, cookieHeader: sessionCache.cookieHeader };
   }
 
-  const executablePath = getExecutablePath();
-  const browser = await puppeteer.launch({
-    executablePath,
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-blink-features=AutomationControlled",
-      "--window-size=1280,800",
-      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    ],
-  });
-
+  // 2. Consulta no banco centralizador_sic_db.system_settings
   try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-
-    let capturedToken = "";
-
-    page.on("response", async (res) => {
-      const url = res.url();
-      if (url.includes("/api/login")) {
-        try {
-          const json = await res.json();
-          if (json.body && typeof json.body === "string" && json.body.startsWith("eyJ")) {
-            capturedToken = json.body;
-          }
-        } catch (e) {}
-      }
-    });
-
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-    });
-
-    await page.goto("https://ui.coopedu.app.br/", { waitUntil: "networkidle2" });
-    await page.waitForSelector('input[name="username"]');
-
-    await page.type('input[name="username"]', SIC_USER_EMAIL);
-    await page.type('input[name="password"]', SIC_USER_PASSWORD);
-
-    await page.click('button[type="submit"]');
-    await new Promise((r) => setTimeout(r, 6000));
-
-    const cookies = await page.cookies();
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
-
-    let jwtToken = capturedToken;
-    if (!jwtToken) {
-      const authCookie = cookies.find((c) => c.name === "coopedu-auth-prod");
-      if (authCookie) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(authCookie.value));
-          jwtToken = parsed.value;
-        } catch (e) {}
+    const [rows] = await pool.query<any[]>(
+      "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('sic_web_session_token', 'sic_web_session_cookie')"
+    );
+    if (rows && rows.length > 0) {
+      const tokenRow = rows.find((r: any) => r.setting_key === "sic_web_session_token");
+      const cookieRow = rows.find((r: any) => r.setting_key === "sic_web_session_cookie");
+      if (tokenRow?.setting_value) {
+        const norm = normalizeSicTokenAndCookie(tokenRow.setting_value);
+        if (norm && norm.expiresAt > (now + 60000)) {
+          if (cookieRow?.setting_value) norm.cookieHeader = cookieRow.setting_value;
+          sessionCache = norm;
+          return { jwtToken: norm.jwtToken, cookieHeader: norm.cookieHeader };
+        }
       }
     }
+  } catch (e: any) {}
 
-    await browser.close();
-
-    if (!jwtToken) {
-      throw new Error("Não foi possível capturar o Token JWT da sessão do Atendimento no SIC.");
+  // 3. Consulta no banco helpdesk_local.system_settings (compartilhamento entre sistemas)
+  try {
+    const hdDbName = process.env.HELPDESK_DB_NAME || "helpdesk_local";
+    const [hdRows] = await pool.query<any[]>(
+      `SELECT settingKey, settingValue FROM ${hdDbName}.system_settings WHERE settingKey IN ('sic_web_session_token', 'sic_web_session_cookie')`
+    );
+    if (hdRows && hdRows.length > 0) {
+      const tokenRow = hdRows.find((r: any) => r.settingKey === "sic_web_session_token");
+      const cookieRow = hdRows.find((r: any) => r.settingKey === "sic_web_session_cookie");
+      if (tokenRow?.settingValue) {
+        const norm = normalizeSicTokenAndCookie(tokenRow.settingValue);
+        if (norm && norm.expiresAt > (now + 60000)) {
+          if (cookieRow?.settingValue) norm.cookieHeader = cookieRow.settingValue;
+          sessionCache = norm;
+          return { jwtToken: norm.jwtToken, cookieHeader: norm.cookieHeader };
+        }
+      }
     }
+  } catch (e: any) {}
 
-    sessionCache = {
-      jwtToken,
-      cookieHeader,
-      expiresAt: now + 25 * 60 * 1000,
-    };
-
-    return { jwtToken, cookieHeader };
-  } catch (err: any) {
-    await browser.close();
-    throw new Error(`Falha na automação de login do SIC: ${err.message}`);
+  // 4. Variáveis de ambiente
+  if (process.env.SIC_SESSION_COOKIE || process.env.SIC_SESSION_TOKEN) {
+    const envVal = process.env.SIC_SESSION_COOKIE || process.env.SIC_SESSION_TOKEN || "";
+    const norm = normalizeSicTokenAndCookie(envVal);
+    if (norm && norm.expiresAt > (now + 60000)) {
+      sessionCache = norm;
+      return { jwtToken: norm.jwtToken, cookieHeader: norm.cookieHeader };
+    }
   }
+
+  // 5. Fallback via robô headless (apenas se expressamente habilitado via PUPPETEER_AUTO_LOGIN=true)
+  const executablePath = getExecutablePath();
+  if (executablePath && process.env.PUPPETEER_AUTO_LOGIN === "true") {
+    try {
+      console.log("[SIC Auth] Tentando renovação automática via robô navegador headless...");
+      const browser = await puppeteer.launch({
+        executablePath,
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-blink-features=AutomationControlled",
+          "--window-size=1280,800",
+          "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        ],
+      });
+
+      try {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1280, height: 800 });
+
+        let capturedToken = "";
+        page.on("response", async (res) => {
+          const url = res.url();
+          if (url.includes("/api/login")) {
+            try {
+              const json = await res.json();
+              if (json.body && typeof json.body === "string" && json.body.startsWith("eyJ")) {
+                capturedToken = json.body;
+              }
+            } catch (e) {}
+          }
+        });
+
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, "webdriver", { get: () => false });
+        });
+
+        await page.goto("https://ui.coopedu.app.br/", { waitUntil: "networkidle2", timeout: 25000 });
+        const userInput = await page.$('input[name="username"], input[name="email"], input[type="email"]');
+        if (userInput) {
+          await userInput.type(SIC_USER_EMAIL, { delay: 30 });
+          const passInput = await page.$('input[name="password"], input[type="password"]');
+          if (passInput) await passInput.type(SIC_USER_PASSWORD, { delay: 30 });
+          const submitBtn = await page.$('button[type="submit"]');
+          if (submitBtn) await submitBtn.click();
+          await new Promise((r) => setTimeout(r, 6000));
+        }
+
+        const cookies = await page.cookies();
+        const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+        let jwtToken = capturedToken;
+        if (!jwtToken) {
+          const authCookie = cookies.find((c) => c.name === "coopedu-auth-prod");
+          if (authCookie) {
+            try {
+              const parsed = JSON.parse(decodeURIComponent(authCookie.value));
+              jwtToken = parsed.value;
+            } catch (e) {}
+          }
+        }
+
+        await browser.close();
+
+        if (jwtToken && jwtToken.startsWith("eyJ")) {
+          const norm = normalizeSicTokenAndCookie(jwtToken);
+          if (norm) {
+            norm.cookieHeader = cookieHeader || norm.cookieHeader;
+            sessionCache = norm;
+            await saveSicSession(jwtToken).catch(() => {});
+            return { jwtToken: norm.jwtToken, cookieHeader: norm.cookieHeader };
+          }
+        }
+      } catch (innerErr: any) {
+        await browser.close().catch(() => {});
+        console.warn("[SIC Auth Warning] Robô headless encontrou barreira (reCAPTCHA):", innerErr.message);
+      }
+    } catch (launchErr: any) {
+      console.warn("[SIC Auth Warning] Falha ao iniciar Chromium:", launchErr.message);
+    }
+  }
+
+  throw new Error(
+    "A Sessão Web do portal SIC (Coopedu) expirou ou não está configurada. Por favor, acesse o portal https://ui.coopedu.app.br, copie o cookie 'coopedu-auth-prod' e cole no menu Conexão SIC."
+  );
 }
 
 /**
@@ -158,31 +431,50 @@ export async function updateOfficialSicCooperadoContacts(
 
     // Formata o RG para string simples conforme exigido pela API do SIC
     const rgString = typeof existing.documents?.rg === "object" ? (existing.documents.rg.number || "") : (existing.documents?.rg || "");
+    const rgIssuer = existing.documents?.rgIssuer || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgIssuer : "") || "SSP";
+    const rgState = existing.documents?.rgState || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgState : "") || "CE";
 
     let formattedBirthDate = existing.birthDate || existing.dataNascimento;
     if (newBirthDate) {
-      try {
-        const d = new Date(newBirthDate);
+      const str = String(newBirthDate).trim();
+      if (str.includes("/")) {
+        const parts = str.split("/");
+        if (parts.length === 3) {
+          formattedBirthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}T00:00:00.000Z`;
+        }
+      } else {
+        const d = new Date(str);
         if (!isNaN(d.getTime())) {
           formattedBirthDate = d.toISOString().split("T")[0] + "T00:00:00.000Z";
         }
-      } catch (e) {}
+      }
     }
 
-    // 3. Monta o payload mantendo TODOS os dados cadastrais reais do cooperado selecionado
+    // 3. Remove campos de relacionamento somente-leitura que causam HTTP 503 no backend do SIC
+    const {
+      fileDocuments,
+      contractCooperativeUser,
+      rubricCooperativeUsers,
+      payrollProductivities,
+      cooperative,
+      createdTime,
+      updatedTime,
+      ...cleanData
+    } = existing;
+
     const payload = {
-      ...existing,
+      ...cleanData,
       identification: numericCpf,
-      email: newEmail,
-      cellPhone: numericPhone,
+      email: String(newEmail || existing.email || "").trim().toLowerCase(),
+      cellPhone: numericPhone || cleanCpf(existing.cellPhone || existing.celular || ""),
       telephone: existing.telephone || "",
       birthDate: formattedBirthDate,
       dataNascimento: formattedBirthDate,
       documents: {
         ...existing.documents,
-        rg: rgString,
-        rgIssuer: existing.documents?.rg?.rgIssuer || "SSP",
-        rgState: existing.documents?.rg?.rgState || "CE",
+        rg: rgString || existing.documents?.rg?.number || null,
+        rgIssuer: rgIssuer,
+        rgState: rgState,
       },
     };
 
@@ -201,53 +493,115 @@ export async function updateOfficialSicCooperadoContacts(
 }
 
 /**
- * Baixa o PDF original do Comprovante PIX/Fitbank do SIC oficial (Imagem 2)
+ * Baixa o PDF original do Comprovante PIX/Transferência/Fitbank do SIC oficial
  */
 export async function getOfficialSicPaymentReceiptPdf(cpf: string, payrollId: string): Promise<Buffer | null> {
   try {
     const numericCpf = cleanCpf(cpf);
-    if (!numericCpf || !payrollId) return null;
+    if (!numericCpf) return null;
 
     const { jwtToken, cookieHeader } = await getAuthenticatedSicSession();
-
     const headers = {
       Authorization: `Bearer ${jwtToken}`,
       Cookie: cookieHeader,
       Origin: "https://ui.coopedu.app.br",
     };
 
-    const listRes = await axios.get(
-      `https://ui.coopedu.app.br/api/cooperado/listar?search=${numericCpf}&pageNumber=1&pageSize=10`,
-      { headers }
-    );
+    // 1. Obter o ID do cooperado no SIC (sic_id)
+    let cooperadoId: string | null = null;
+    try {
+      const { pool } = require("../db");
+      const [rows] = await pool.query(
+        "SELECT sic_id FROM cooperados WHERE document = ? LIMIT 1",
+        [numericCpf]
+      );
+      if (rows?.[0]?.sic_id) {
+        cooperadoId = rows[0].sic_id;
+      }
+    } catch (e) {}
 
-    const items = listRes.data?.items || listRes.data?.cooperados || listRes.data?.body?.items || [];
-    const item = items.find((i: any) => cleanCpf(i.document || i.cpf) === numericCpf) || items[0];
-    if (!item || !item.id) return null;
+    if (!cooperadoId) {
+      const listRes = await axios.get(
+        `https://ui.coopedu.app.br/api/cooperado/listar?search=${numericCpf}&pageNumber=1&pageSize=10`,
+        { headers }
+      );
+      const items = listRes.data?.body?.items || listRes.data?.items || listRes.data?.cooperados || [];
+      const item = items.find((i: any) => cleanCpf(i.documents?.identification || i.document || i.cpf) === numericCpf);
+      if (item?.id) {
+        cooperadoId = item.id;
+      }
+    }
 
-    const cooperadoId = item.id;
+    if (!cooperadoId) {
+      console.warn(`[SIC Official Receipt] Cooperado com CPF ${numericCpf} não encontrado no SIC.`);
+      return null;
+    }
 
+    // 2. Buscar lista de pagamentos do cooperado
     const payListRes = await axios.get(
-      `https://ui.coopedu.app.br/api/cooperado/${cooperadoId}/financeiro/pagamentos?pageNumber=1&pageSize=100`,
+      `https://ui.coopedu.app.br/api/cooperado/${cooperadoId}/financeiro/pagamentos?pageNumber=1&pageSize=50`,
       { headers }
     );
-
     const payItems = payListRes.data?.body?.items || payListRes.data?.items || [];
-    const matchedPay = payItems.find((p: any) => p.payrollId === payrollId) || payItems[0];
-    if (!matchedPay || !matchedPay.paymentId) return null;
+    if (payItems.length === 0) {
+      console.warn(`[SIC Official Receipt] Nenhum pagamento encontrado para cooperado ${cooperadoId}`);
+      return null;
+    }
 
+    // Localiza o pagamento correspondente pela payrollId ou competência
+    let matchedPay = payItems.find((p: any) => p.payrollId === payrollId || p.paymentId === payrollId);
+
+    if (!matchedPay && payrollId) {
+      const parts = payrollId.replace("payroll-", "").split("-");
+      if (parts.length >= 2) {
+        const monthNum = Number(parts.pop());
+        const yearNum = Number(parts.pop());
+        matchedPay = payItems.find((p: any) => p.month === monthNum && p.year === yearNum);
+      }
+    }
+
+    if (!matchedPay) {
+      matchedPay = payItems[0];
+    }
+
+    const paymentId = matchedPay.paymentId || matchedPay.id;
+    if (!paymentId) return null;
+
+    // 3. Buscar detalhes do pagamento
     const detailsRes = await axios.get(
-      `https://ui.coopedu.app.br/api/cooperado/${cooperadoId}/financeiro/pagamentos/${matchedPay.paymentId}`,
+      `https://ui.coopedu.app.br/api/cooperado/${cooperadoId}/financeiro/pagamentos/${paymentId}`,
       { headers }
     );
 
-    const receiptURL = detailsRes.data?.body?.receiptURL;
-    if (!receiptURL) return null;
+    const details = detailsRes.data?.body || detailsRes.data || {};
+    const receiptURL = details.receiptURL;
+    if (!receiptURL) {
+      console.warn(`[SIC Official Receipt] Pagamento ${paymentId} não possui receiptURL`);
+      return null;
+    }
 
-    const pdfRes = await axios.get(receiptURL, { responseType: "arraybuffer" });
-    return Buffer.from(pdfRes.data);
+    // 4. Resolver a URL real de download (minio vs http)
+    let downloadUrl = receiptURL;
+    if (receiptURL.startsWith("minio:")) {
+      const filename = receiptURL.slice("minio:".length).trim();
+      downloadUrl = `https://ui.coopedu.app.br/api/files/${encodeURIComponent(filename)}`;
+    }
+
+    console.log(`[SIC Official Receipt] Baixando comprovante oficial de: ${downloadUrl}`);
+    const pdfRes = await axios.get(downloadUrl, {
+      headers: downloadUrl.includes("ui.coopedu.app.br") ? headers : undefined,
+      responseType: "arraybuffer",
+      timeout: 15000,
+    });
+
+    if (pdfRes.data && pdfRes.data.length > 0) {
+      console.log(`[SIC Official Receipt] Comprovante oficial baixado com sucesso (${pdfRes.data.length} bytes)`);
+      return Buffer.from(pdfRes.data);
+    }
+
+    return null;
   } catch (err: any) {
-    console.error(`[SIC Official Receipt Error] Erro ao buscar comprovante PIX do SIC para CPF ${cpf}:`, err.message);
+    console.error(`[SIC Official Receipt Error] Erro ao buscar comprovante oficial para CPF ${cpf}:`, err.message);
     return null;
   }
 }

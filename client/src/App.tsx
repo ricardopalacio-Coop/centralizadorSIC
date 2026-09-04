@@ -7,12 +7,16 @@ import { ImportacaoPage } from "./pages/ImportacaoPage";
 import { DesligamentoPage } from "./pages/DesligamentoPage";
 import { UsersPage } from "./pages/UsersPage";
 import { ApiManagementPage } from "./pages/ApiManagementPage";
-import { Navbar } from "./components/Navbar";
+import { PlugSignPage } from "./pages/PlugSignPage";
+import { FichasCadastraisPage } from "./pages/FichasCadastraisPage";
+import { FichasDesligamentoPage } from "./pages/FichasDesligamentoPage";
+import { EasyCoopPage } from "./pages/EasyCoopPage";
+import { Navbar, NavTabType } from "./components/Navbar";
 import { Loader2 } from "lucide-react";
 
 const MainContent: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "cooperados" | "importacao" | "desligamento" | "apis" | "users">("dashboard");
+  const [activeTab, setActiveTab] = useState<NavTabType>("dashboard");
 
   if (isLoading) {
     return (
@@ -32,9 +36,14 @@ const MainContent: React.FC = () => {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 bg-slate-100">
         {activeTab === "dashboard" && <DashboardPage />}
+        {activeTab === "easycoop-cooperado" && <EasyCoopPage initialMode="cooperado" />}
+        {activeTab === "easycoop-contrato" && <EasyCoopPage initialMode="contrato" />}
         {activeTab === "cooperados" && <CooperadosListPage />}
+        {activeTab === "fichas" && <FichasCadastraisPage />}
+        {activeTab === "fichas-desligamento" && <FichasDesligamentoPage />}
         {activeTab === "importacao" && <ImportacaoPage />}
         {activeTab === "desligamento" && <DesligamentoPage />}
+        {activeTab === "plugsign" && <PlugSignPage />}
         {activeTab === "apis" && <ApiManagementPage />}
         {activeTab === "users" && user.role === "SUPER_ADMIN" && <UsersPage />}
       </main>

@@ -34,8 +34,15 @@ Copy-Item -Path "$SourceDir\client\dist" -Destination "$InstallDir\client\dist" 
 Copy-Item -Path "$SourceDir\client-desktop" -Destination "$InstallDir\client-desktop" -Recurse -Force
 Copy-Item -Path "$SourceDir\installer" -Destination "$InstallDir\installer" -Recurse -Force
 Copy-Item -Path "$SourceDir\package.json" -Destination "$InstallDir\package.json" -Force
-Copy-Item -Path "$SourceDir\.env" -Destination "$InstallDir\.env" -Force
+if (Test-Path "$SourceDir\.env") {
+    Copy-Item -Path "$SourceDir\.env" -Destination "$InstallDir\.env" -Force
+}
 Copy-Item -Path "$SourceDir\Start.bat" -Destination "$InstallDir\Start.bat" -Force
+
+if (Test-Path "$SourceDir\node_modules") {
+    Write-Host "   -> Copiando dependencias node_modules..." -ForegroundColor DarkGray
+    Copy-Item -Path "$SourceDir\node_modules" -Destination "$InstallDir\node_modules" -Recurse -Force
+}
 
 if (Test-Path "$SourceDir\scratch\mysql_data") {
     New-Item -Path "$InstallDir\scratch" -ItemType Directory -Force | Out-Null

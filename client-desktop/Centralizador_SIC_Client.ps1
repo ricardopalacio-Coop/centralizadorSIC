@@ -55,24 +55,27 @@ if ($wkey -eq [System.Windows.Forms.Keys]::Shift) {
     }
 }
 
-# Se for localhost e a porta 3005 não estiver pronta, tenta iniciar o servidor localmente
+# Se for localhost e a porta 3005 não estiver pronta, tenta iniciar o servidor localmente (se node.exe estiver disponível)
 if ($ServerUrl -like "*localhost*" -or $ServerUrl -like "*127.0.0.1*") {
     $isReady = Test-ServerPort $ServerUrl
     if (-not $isReady) {
-        # Procurar o Start.bat no diretório raiz ou da instalação
-        $StartBatCandidate = "$PSScriptRoot\..\Start.bat"
-        if (-not (Test-Path $StartBatCandidate)) {
-            $StartBatCandidate = "C:\CentralizadorSIC\Start.bat"
-        }
+        $hasNode = Get-Command "node.exe" -ErrorAction SilentlyContinue
+        if ($hasNode) {
+            # Procurar o Start.bat no diretório raiz ou da instalação
+            $StartBatCandidate = "$PSScriptRoot\..\Start.bat"
+            if (-not (Test-Path $StartBatCandidate)) {
+                $StartBatCandidate = "C:\CentralizadorSIC\Start.bat"
+            }
 
-        if (Test-Path $StartBatCandidate) {
-            Start-Process -FilePath $StartBatCandidate -WorkingDirectory (Split-Path $StartBatCandidate) -WindowStyle Minimized
-            # Aguardar até 12 segundos o servidor subir
-            for ($i = 0; $i -lt 12; $i++) {
-                Start-Sleep -Seconds 1
-                if (Test-ServerPort $ServerUrl) {
-                    $isReady = $true
-                    break
+            if (Test-Path $StartBatCandidate) {
+                Start-Process -FilePath $StartBatCandidate -WorkingDirectory (Split-Path $StartBatCandidate) -WindowStyle Minimized
+                # Aguardar até 8 segundos o servidor subir
+                for ($i = 0; $i -lt 8; $i++) {
+                    Start-Sleep -Seconds 1
+                    if (Test-ServerPort $ServerUrl) {
+                        $isReady = $true
+                        break
+                    }
                 }
             }
         }

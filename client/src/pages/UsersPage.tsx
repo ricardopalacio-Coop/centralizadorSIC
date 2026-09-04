@@ -135,7 +135,7 @@ export const UsersPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8 animate-in fade-in duration-300">
+    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center space-x-3">
         <div className="p-3 rounded-2xl bg-sky-50 text-sky-700 border border-sky-200">
           <Users className="h-6 w-6" />

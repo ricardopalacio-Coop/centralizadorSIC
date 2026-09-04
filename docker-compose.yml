@@ -9,16 +9,22 @@ services:
       - "3005:3005"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
     environment:
       - PORT=3005
       - DB_HOST=host.docker.internal
       - DB_PORT=3307
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=centralizador_sic_db
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_NAME:-centralizador_sic_db}
       - SIC_API_URL=https://core.coopedu.app.br
       - SIC_CLIENT_ID=2872a32a-48c0-4949-95f8-3e0cdc677907
       - SIC_CLIENT_SECRET=510fb3c701774cb78d1e8b8c47cf187e
       - DESLIGAMENTO_API_KEY=583ea0cb-1c5c-4a71-aae0-5a04af21ea4e
-      - DESLIGAMENTO_BASE_URL=https://c.coopedu.com.br
       - JWT_SECRET=super-secret-key-centralizador-sic-2026
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-1X_pCFmZNmj-EoGi-ltFf0lZWxZ6DPzLP}
+      - GOOGLE_DRIVE_DESLIGAMENTO_FOLDER_ID=${GOOGLE_DRIVE_DESLIGAMENTO_FOLDER_ID:-1Htt4v5GBm23RYuSaoJ6b6LqpobC1NMfb}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - GOOGLE_OAUTH_REFRESH_TOKEN=${GOOGLE_OAUTH_REFRESH_TOKEN}

@@ -12,10 +12,16 @@ import cooperadoRoutes from "./routes/cooperados";
 import desligamentoRoutes from "./routes/desligamento";
 import apiTokensRoutes from "./routes/apiTokens";
 import apiV1Routes from "./routes/apiV1";
+import plugsignRoutes from "./routes/plugsign";
+import googleDriveRoutes from "./routes/googleDrive";
+import googleDriveDesligamentoRoutes from "./routes/googleDriveDesligamento";
+import easycoopRoutes from "./routes/easycoop";
+import sicSettingsRoutes from "./routes/sicSettings";
 
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3001;
 
 // 1. Cabeçalhos de Segurança HTTP com Helmet
@@ -40,7 +46,7 @@ app.use(
   })
 );
 
-// 5. Rate Limiting para a rota de Login
+// 5. Rate Limiting para a rota de Login e API v1
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
@@ -49,7 +55,16 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const apiV1Limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120, // 120 reqs/minuto
+  message: { error: "Limite de requisições excedido para a API V1. Aguarde 1 minuto." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use("/api/auth/login", loginLimiter);
+app.use("/api/v1", apiV1Limiter);
 
 // 6. Rotas da API
 app.use("/api/auth", authRoutes);
@@ -58,6 +73,11 @@ app.use("/api/cooperados", cooperadoRoutes);
 app.use("/api/desligamento", desligamentoRoutes);
 app.use("/api/tokens", apiTokensRoutes);
 app.use("/api/v1", apiV1Routes);
+app.use("/api/plugsign", plugsignRoutes);
+app.use("/api/drive/desligamento", googleDriveDesligamentoRoutes);
+app.use("/api/drive", googleDriveRoutes);
+app.use("/api/easycoop", easycoopRoutes);
+app.use("/api/sic", sicSettingsRoutes);
 
 // Rota de teste de saúde da API
 app.get("/api/health", (req, res) => {

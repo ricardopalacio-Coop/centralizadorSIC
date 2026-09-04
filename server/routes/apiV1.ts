@@ -134,7 +134,7 @@ router.get("/cooperados/:cpf/resumo", async (req: ApiAuthenticatedRequest, res: 
       sicDetails?.informacoesProfissionais?.cargo ||
       sicDetails?.profissao ||
       sicDetails?.cargo ||
-      "OUVIDOR";
+      "";
 
     // 3. Montar contratos ativos
     let contratosAtivos: any[] = [];
@@ -142,18 +142,18 @@ router.get("/cooperados/:cpf/resumo", async (req: ApiAuthenticatedRequest, res: 
       contratosAtivos = sicDetails.contratos
         .filter((c: any) => c.statusContratoUsuario === "ATIVO")
         .map((c: any) => ({
-          contrato: c.contrato?.descricao || c.contrato?.centroDeCusto || "COOPEDU GESTORES",
-          cliente: c.contrato?.cliente?.nome || "COOPERATIVA DE TRABALHO DOS PROFISSIONAIS DA EDUCA",
-          nucleo: c.contrato?.nucleoRegional || "REGIONAL",
+          contrato: c.contrato?.descricao || c.contrato?.centroDeCusto || "",
+          cliente: c.contrato?.cliente?.nome || "",
+          nucleo: c.contrato?.nucleoRegional || "",
           status: "ATIVO",
         }));
     }
 
-    if (contratosAtivos.length === 0) {
+    if (contratosAtivos.length === 0 && dbCooperado.contract_name) {
       contratosAtivos = [
         {
-          contrato: dbCooperado.contract_name || "COOPEDU GESTORES",
-          cliente: "COOPERATIVA DE TRABALHO DOS PROFISSIONAIS DA EDUCA",
+          contrato: dbCooperado.contract_name,
+          cliente: "",
           status: "ATIVO",
         },
       ];
@@ -243,8 +243,8 @@ router.get("/cooperados/:cpf/folhas", async (req: ApiAuthenticatedRequest, res: 
       ano: p.year,
       tipoFolha: p.payrollType || "Regular",
       status: p.payrollStatus || "Processado",
-      contrato: p.contractDescription || "COOPEDU GESTORES",
-      cliente: p.clientName || "COOPERATIVA DE TRABALHO DOS PROFISSIONAIS DA EDUCA",
+      contrato: p.contractDescription || "",
+      cliente: p.clientName || "",
       dataPagamento: p.payDayTime || null,
       links: {
         resumoFinanceiro: `/api/v1/cooperados/${numericCpf}/folhas/${p.payrollId}/resumo-financeiro`,

@@ -1,5 +1,23 @@
 import { pool } from "../db";
 
+const HELPDESK_DB = process.env.HELPDESK_DB_NAME || "helpdesk_local";
+let helpdeskDbAvailable: boolean | null = null;
+
+async function isHelpdeskDbAvailable(): Promise<boolean> {
+  if (helpdeskDbAvailable !== null) return helpdeskDbAvailable;
+  try {
+    const [rows] = await pool.query<any[]>(
+      "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?",
+      [HELPDESK_DB]
+    );
+    helpdeskDbAvailable = rows.length > 0;
+    return helpdeskDbAvailable;
+  } catch {
+    helpdeskDbAvailable = false;
+    return false;
+  }
+}
+
 export interface MobileAuditLogItem {
   id: number;
   date: string;
@@ -136,9 +154,14 @@ export async function getCooperadoAppData(
   if (!numericCpf) return result;
 
   try {
-    // 1. Buscar no app_db.cooperados e app_db.users
+    // 0. Verifica se o banco do HelpDesk está disponível no MySQL
+    if (!(await isHelpdeskDbAvailable())) {
+      return result;
+    }
+
+    // 1. Buscar cooperados e users no banco do HelpDesk
     const [coopRows] = await pool.query<any[]>(
-      "SELECT id, name, email, createdAt FROM app_db.cooperados WHERE document = ?",
+      `SELECT id, name, email, createdAt FROM \`${HELPDESK_DB}\`.cooperados WHERE document = ?`,
       [numericCpf]
     );
 
@@ -152,7 +175,7 @@ export async function getCooperadoAppData(
     if (targetEmail || targetName) {
       const [userRows] = await pool.query<any[]>(
         `SELECT id, email, lastSignedIn, createdAt 
-         FROM app_db.users 
+         FROM \`${HELPDESK_DB}\`.users 
          WHERE (email = ? AND email IS NOT NULL AND email != '') 
             OR (name = ? AND name IS NOT NULL AND name != '')
          ORDER BY lastSignedIn DESC 
@@ -172,7 +195,7 @@ export async function getCooperadoAppData(
       }
     }
 
-    // 2. Buscar LOGS DE AUDITORIA reais de app_db.audit_logs
+    // 2. Buscar LOGS DE AUDITORIA reais de audit_logs
     const auditItems: MobileAuditLogItem[] = [];
     let auditTodayCount = 0;
     let auditWeekCount = 0;
@@ -186,7 +209,7 @@ export async function getCooperadoAppData(
     if (appUserId) {
       const [logs] = await pool.query<any[]>(
         `SELECT id, action, entity, page, details, ipAddress, userAgent, createdAt 
-         FROM app_db.audit_logs 
+         FROM \`${HELPDESK_DB}\`.audit_logs 
          WHERE userId = ? 
          ORDER BY createdAt DESC 
          LIMIT 100`,

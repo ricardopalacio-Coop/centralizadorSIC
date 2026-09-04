@@ -52,11 +52,13 @@ router.post("/gerar", async (req: AuthenticatedRequest, res: Response) => {
 
     // Gerar token seguro com prefixo sic_live_
     const randomBytes = crypto.randomBytes(24).toString("hex");
-    const token = `sic_live_${randomBytes}`;
+    const rawToken = `sic_live_${randomBytes}`;
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const maskedToken = `${rawToken.substring(0, 14)}...${rawToken.substring(rawToken.length - 6)}`;
 
     const [result] = await pool.query<any>(
-      "INSERT INTO api_tokens (user_id, name, token, status) VALUES (?, ?, ?, 'ACTIVE')",
-      [userId, name.trim(), token]
+      "INSERT INTO api_tokens (user_id, name, token, token_hash, status) VALUES (?, ?, ?, ?, 'ACTIVE')",
+      [userId, name.trim(), maskedToken, tokenHash]
     );
 
     const [createdRows] = await pool.query<any[]>(
@@ -66,7 +68,10 @@ router.post("/gerar", async (req: AuthenticatedRequest, res: Response) => {
 
     return res.status(201).json({
       message: "Token de API gerado com sucesso!",
-      token: createdRows[0],
+      token: {
+        ...createdRows[0],
+        token: rawToken, // Devolve o token completo apenas uma vez na criação
+      },
     });
   } catch (error: any) {
     console.error("[ApiTokens Error] Erro ao gerar token:", error.message);

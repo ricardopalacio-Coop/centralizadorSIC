@@ -6,6 +6,19 @@
     color: #0f172a;
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
+    text-transform: uppercase;
+  }
+
+  input,
+  textarea,
+  select,
+  pre,
+  code,
+  .preserve-text,
+  .preserve-case,
+  .pdf-viewer-modal,
+  [data-preserve-case] {
+    text-transform: none;
   }
 }
 

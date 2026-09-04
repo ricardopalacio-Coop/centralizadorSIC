@@ -5,5 +5,11 @@ dist
 dist_installer
 scratch
 installer
+installer/Output
+*.exe
+*.pdf
+*chave*
+*.pem
 .git
 .env
+.env.*

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import { pool } from "../db";
 
 export interface ApiAuthenticatedRequest extends Request {
@@ -28,22 +29,18 @@ export async function authenticateApiKey(
       token = String(req.headers["x-api-key"]).trim();
     }
 
-    // 3. Verificar Query Parameter api_key
-    if (!token && req.query.api_key) {
-      token = String(req.query.api_key).trim();
-    }
-
     if (!token) {
       return res.status(401).json({
         error: "Token de API não fornecido.",
-        message: "Autenticação necessária. Envie seu token via Header 'Authorization: Bearer <TOKEN>' ou 'X-API-Key: <TOKEN>'.",
+        message: "Autenticação necessária. Envie seu token via Header 'Authorization: Bearer <TOKEN>' ou 'X-API-Key: <TOKEN>'. (Por segurança, tokens via URL não são aceitos).",
       });
     }
 
-    // 4. Buscar token ativo no banco de dados
+    // 3. Buscar token ativo no banco de dados (suporta hash SHA-256 e tokens legados)
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const [rows] = await pool.query<any[]>(
-      "SELECT id, user_id, name, status FROM api_tokens WHERE token = ? AND status = 'ACTIVE' LIMIT 1",
-      [token]
+      "SELECT id, user_id, name, status FROM api_tokens WHERE (token_hash = ? OR token = ?) AND status = 'ACTIVE' LIMIT 1",
+      [tokenHash, token]
     );
 
     if (!rows || rows.length === 0) {

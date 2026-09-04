@@ -9,6 +9,7 @@ client/node_modules/
 dist/
 dist_installer/
 client/dist/
+deploy.tar.gz
 
 # Scratch & Temporary Data
 scratch/
@@ -19,10 +20,12 @@ installer/Output/
 *.jpg
 *.jpeg
 
-# Environment Files
+# Environment & Secret Files
 .env
 .env.local
 .env.production
+*chave*
+*.pem
 
 # IDE & OS Files
 .DS_Store
