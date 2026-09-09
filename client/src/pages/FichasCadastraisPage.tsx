@@ -34,6 +34,9 @@ export interface FichaItem {
   name: string;
   cooperadoName: string;
   cpf?: string | null;
+  matricula?: string | null;
+  birthDate?: string | null;
+  contractName?: string | null;
   modifiedTime: string;
   createdTime?: string;
   size?: number;
@@ -111,6 +114,29 @@ export const FichasCadastraisPage: React.FC = () => {
   const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [showScanMenu, setShowScanMenu] = useState(false);
   const [editingItem, setEditingItem] = useState<FichaItem | null>(null);
+  const [isUpdatingEasy, setIsUpdatingEasy] = useState(false);
+
+  const handleAtualizarEasy = async () => {
+    setIsUpdatingEasy(true);
+    try {
+      const res = await fetch("/api/drive/fichas/atualizar-easy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`✅ ${data.message}`);
+        fetchFichas();
+      } else {
+        alert(`❌ ${data.error || "Falha ao atualizar dados com a base Easy."}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro ao comunicar com o servidor: ${err.message}`);
+    } finally {
+      setIsUpdatingEasy(false);
+    }
+  };
 
   const fetchFichas = useCallback(async () => {
     setLoading(true);
@@ -148,23 +174,26 @@ export const FichasCadastraisPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [fetchFichas]);
 
-  // Polling para acompanhar progresso da varredura profunda em tempo real
+  // Polling global para acompanhar progresso da varredura em tempo real (para todos os usuários)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (scanStatus?.isScanning) {
-      interval = setInterval(async () => {
-        try {
-          const res = await fetch("/api/drive/fichas/scan-status", { credentials: "include" });
-          const data = await res.json();
-          setScanStatus(data);
-          if (!data.isScanning) {
-            fetchFichas();
-          }
-        } catch (e) {
-          console.error("Erro ao verificar status da varredura:", e);
+    const pollInterval = scanStatus?.isScanning ? 1500 : 7000;
+
+    interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/drive/fichas/scan-status", { credentials: "include" });
+        const data = await res.json();
+        
+        // Se a varredura terminou no servidor, atualiza a lista globalmente
+        if (scanStatus?.isScanning && !data.isScanning) {
+          fetchFichas();
         }
-      }, 1500);
-    }
+        setScanStatus(data);
+      } catch (e) {
+        // silencioso
+      }
+    }, pollInterval);
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -276,6 +305,20 @@ export const FichasCadastraisPage: React.FC = () => {
         hour: "2-digit",
         minute: "2-digit",
       });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatBirthDate = (dateStr?: string | null) => {
+    if (!dateStr) return "-";
+    try {
+      const clean = String(dateStr).split("T")[0];
+      const parts = clean.split("-");
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
     } catch {
       return dateStr;
     }
@@ -437,6 +480,21 @@ export const FichasCadastraisPage: React.FC = () => {
             )}
           </div>
 
+          {/* Botão Atualizar Easy */}
+          <button
+            onClick={handleAtualizarEasy}
+            disabled={isUpdatingEasy || scanStatus?.isScanning}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm shadow-emerald-600/20"
+            title="Preenche Matrícula, Data de Nascimento e Contrato Principal cruzando com a base de cooperados do EasyCoop"
+          >
+            {isUpdatingEasy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 text-emerald-200" />
+            )}
+            <span>{isUpdatingEasy ? "Atualizando..." : "Atualizar Easy"}</span>
+          </button>
+
           {/* Sincronizar Metadados */}
           <button
             onClick={handleSync}
@@ -480,11 +538,14 @@ export const FichasCadastraisPage: React.FC = () => {
                 <RefreshCw className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider">
-                  Varredura Profunda de PDFs em Execução...
+                <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider flex items-center space-x-2">
+                  <span>Varredura Global no Servidor em Execução...</span>
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-black tracking-normal">
+                    GRAVANDO NO BANCO CENTRAL
+                  </span>
                 </h4>
                 <p className="text-[11px] text-indigo-700 font-medium">
-                  Lendo arquivos para extrair Nome Completo e CPF • Arquivo atual:{" "}
+                  Extraindo CPF/dados e gravando no MySQL central para todos os usuários • Arquivo atual:{" "}
                   <span className="font-mono font-bold text-indigo-900">
                     {scanStatus.currentFileName || "Processando..."}
                   </span>
@@ -734,6 +795,9 @@ export const FichasCadastraisPage: React.FC = () => {
                 <tr>
                   <th className="p-4">Nome Completo</th>
                   <th className="p-4">CPF</th>
+                  <th className="p-4">Matrícula</th>
+                  <th className="p-4">Data Nasc.</th>
+                  <th className="p-4">Contrato Principal</th>
                   <th className="p-4">Data da Modificação</th>
                   <th className="p-4">Tipo / Pasta</th>
                   <th className="p-4 text-right">Ações</th>
@@ -779,8 +843,41 @@ export const FichasCadastraisPage: React.FC = () => {
                       )}
                     </td>
 
+                    {/* Matrícula */}
+                    <td className="p-4">
+                      {item.matricula ? (
+                        <span className="font-mono font-bold text-sky-900 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200 inline-block">
+                          {item.matricula}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
+                    {/* Data de Nascimento */}
+                    <td className="p-4 text-slate-700 font-medium whitespace-nowrap">
+                      {item.birthDate ? (
+                        <span className="font-mono text-xs">
+                          {formatBirthDate(item.birthDate)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
+                    {/* Contrato Principal */}
+                    <td className="p-4">
+                      {item.contractName ? (
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 inline-block max-w-[200px] truncate" title={item.contractName}>
+                          {item.contractName}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
                     {/* Data Modificação */}
-                    <td className="p-4 text-slate-600">
+                    <td className="p-4 text-slate-600 whitespace-nowrap">
                       <div className="flex items-center space-x-1.5">
                         <Calendar className="h-3.5 w-3.5 text-slate-400" />
                         <span className="font-medium">{formatDate(item.modifiedTime)}</span>

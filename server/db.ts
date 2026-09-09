@@ -176,6 +176,9 @@ export async function initDb() {
         file_name VARCHAR(255) NOT NULL,
         cooperado_name VARCHAR(255) NOT NULL,
         cpf VARCHAR(20) NULL,
+        matricula VARCHAR(50) NULL,
+        birth_date DATE NULL,
+        contract_name VARCHAR(255) NULL,
         tipo ENUM('Ficha Manual', 'EasyCoop', 'Coopedu Interno', 'Outro') NOT NULL DEFAULT 'Outro',
         folder_id VARCHAR(100) NOT NULL,
         folder_name VARCHAR(100) NOT NULL,
@@ -190,11 +193,22 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_file_id (file_id),
         INDEX idx_cpf (cpf),
+        INDEX idx_matricula (matricula),
         INDEX idx_cooperado_name (cooperado_name),
         INDEX idx_tipo (tipo),
         INDEX idx_ocr_status (ocr_status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    try {
+      await connection.query("ALTER TABLE fichas_cadastrais ADD COLUMN matricula VARCHAR(50) NULL AFTER cpf;");
+    } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE fichas_cadastrais ADD COLUMN birth_date DATE NULL AFTER matricula;");
+    } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE fichas_cadastrais ADD COLUMN contract_name VARCHAR(255) NULL AFTER birth_date;");
+    } catch (e) {}
 
     // 6. Tabela fichas_desligamento (Indexação e Extração do Google Drive - Desligamentos)
     await connection.query(`
@@ -204,6 +218,9 @@ export async function initDb() {
         file_name VARCHAR(255) NOT NULL,
         cooperado_name VARCHAR(255) NOT NULL,
         cpf VARCHAR(20) NULL,
+        matricula VARCHAR(50) NULL,
+        birth_date DATE NULL,
+        contract_name VARCHAR(255) NULL,
         tipo VARCHAR(100) NOT NULL DEFAULT 'Desligamento',
         folder_id VARCHAR(100) NOT NULL,
         folder_name VARCHAR(100) NOT NULL,
@@ -218,11 +235,22 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_file_id (file_id),
         INDEX idx_cpf (cpf),
+        INDEX idx_matricula (matricula),
         INDEX idx_cooperado_name (cooperado_name),
         INDEX idx_tipo (tipo),
         INDEX idx_ocr_status (ocr_status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    try {
+      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN matricula VARCHAR(50) NULL AFTER cpf;");
+    } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN birth_date DATE NULL AFTER matricula;");
+    } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN contract_name VARCHAR(255) NULL AFTER birth_date;");
+    } catch (e) {}
 
     // 7. Tabelas EasyCoop Analytics (Contratos, Alocações, Documentos, Fechamentos, etc.)
     await connection.query(`

@@ -34,6 +34,9 @@ export interface FichaDesligamentoItem {
   name: string;
   cooperadoName: string;
   cpf?: string | null;
+  matricula?: string | null;
+  birthDate?: string | null;
+  contractName?: string | null;
   modifiedTime: string;
   createdTime?: string;
   size?: number;
@@ -107,6 +110,29 @@ export const FichasDesligamentoPage: React.FC = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [showScanMenu, setShowScanMenu] = useState(false);
   const [editingItem, setEditingItem] = useState<FichaDesligamentoItem | null>(null);
+  const [isUpdatingEasy, setIsUpdatingEasy] = useState(false);
+
+  const handleAtualizarEasy = async () => {
+    setIsUpdatingEasy(true);
+    try {
+      const res = await fetch("/api/drive/desligamento/atualizar-easy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`✅ ${data.message}`);
+        fetchFichas();
+      } else {
+        alert(`❌ ${data.error || "Falha ao atualizar dados com a base Easy."}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro ao comunicar com o servidor: ${err.message}`);
+    } finally {
+      setIsUpdatingEasy(false);
+    }
+  };
 
   const fetchFichas = useCallback(async () => {
     setLoading(true);
@@ -144,23 +170,26 @@ export const FichasDesligamentoPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [fetchFichas]);
 
-  // Polling para acompanhar progresso da varredura profunda em tempo real
+  // Polling global para acompanhar progresso da varredura em tempo real (para todos os usuários)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (scanStatus?.isScanning) {
-      interval = setInterval(async () => {
-        try {
-          const res = await fetch("/api/drive/desligamento/scan-status", { credentials: "include" });
-          const data = await res.json();
-          setScanStatus(data);
-          if (!data.isScanning) {
-            fetchFichas();
-          }
-        } catch (e) {
-          console.error("Erro ao verificar status da varredura:", e);
+    const pollInterval = scanStatus?.isScanning ? 1500 : 7000;
+
+    interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/drive/desligamento/scan-status", { credentials: "include" });
+        const data = await res.json();
+        
+        // Se a varredura terminou no servidor, atualiza a lista globalmente
+        if (scanStatus?.isScanning && !data.isScanning) {
+          fetchFichas();
         }
-      }, 1500);
-    }
+        setScanStatus(data);
+      } catch (e) {
+        // silencioso
+      }
+    }, pollInterval);
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -267,6 +296,20 @@ export const FichasDesligamentoPage: React.FC = () => {
         hour: "2-digit",
         minute: "2-digit",
       });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatBirthDate = (dateStr?: string | null) => {
+    if (!dateStr) return "-";
+    try {
+      const clean = String(dateStr).split("T")[0];
+      const parts = clean.split("-");
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
     } catch {
       return dateStr;
     }
@@ -413,6 +456,21 @@ export const FichasDesligamentoPage: React.FC = () => {
             )}
           </div>
 
+          {/* Botão Atualizar Easy */}
+          <button
+            onClick={handleAtualizarEasy}
+            disabled={isUpdatingEasy || scanStatus?.isScanning}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm shadow-emerald-600/20"
+            title="Preenche Matrícula, Data de Nascimento e Contrato Principal cruzando com a base de cooperados do EasyCoop"
+          >
+            {isUpdatingEasy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 text-emerald-200" />
+            )}
+            <span>{isUpdatingEasy ? "Atualizando..." : "Atualizar Easy"}</span>
+          </button>
+
           {/* Sincronizar Metadados */}
           <button
             onClick={handleSync}
@@ -446,11 +504,14 @@ export const FichasDesligamentoPage: React.FC = () => {
                 <RefreshCw className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">
-                  Varredura Profunda de Desligamentos em Execução...
+                <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider flex items-center space-x-2">
+                  <span>Varredura Global no Servidor em Execução...</span>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-black tracking-normal">
+                    GRAVANDO NO BANCO CENTRAL
+                  </span>
                 </h4>
                 <p className="text-[11px] text-rose-700 font-medium">
-                  Lendo arquivos para extrair Nome Completo e CPF • Arquivo atual:{" "}
+                  Extraindo CPF/dados e gravando no MySQL central para todos os usuários • Arquivo atual:{" "}
                   <span className="font-mono font-bold text-rose-900">
                     {scanStatus.currentFileName || "Processando..."}
                   </span>
@@ -634,6 +695,9 @@ export const FichasDesligamentoPage: React.FC = () => {
               <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                 <th className="py-3.5 px-6">Nome do Cooperado / Arquivo</th>
                 <th className="py-3.5 px-4">CPF Identificado</th>
+                <th className="py-3.5 px-4">Matrícula</th>
+                <th className="py-3.5 px-4">Data Nasc.</th>
+                <th className="py-3.5 px-4">Contrato Principal</th>
                 <th className="py-3.5 px-4">Pasta / Tipo</th>
                 <th className="py-3.5 px-4">Última Modificação</th>
                 <th className="py-3.5 px-6 text-right">Ações</th>
@@ -642,14 +706,14 @@ export const FichasDesligamentoPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-rose-600 mb-2" />
                     <span>Carregando termos de desligamento...</span>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <AlertCircle className="h-6 w-6 mx-auto text-slate-300 mb-2" />
                     <span>Nenhum termo de desligamento encontrado com os filtros aplicados.</span>
                   </td>
@@ -690,11 +754,44 @@ export const FichasDesligamentoPage: React.FC = () => {
                       )}
                     </td>
 
+                    {/* Matrícula */}
+                    <td className="py-3.5 px-4">
+                      {item.matricula ? (
+                        <span className="font-mono font-bold text-rose-900 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 inline-block">
+                          {item.matricula}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
+                    {/* Data de Nascimento */}
+                    <td className="py-3.5 px-4 text-slate-700 font-medium whitespace-nowrap">
+                      {item.birthDate ? (
+                        <span className="font-mono text-xs">
+                          {formatBirthDate(item.birthDate)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
+                    {/* Contrato Principal */}
+                    <td className="py-3.5 px-4">
+                      {item.contractName ? (
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 inline-block max-w-[200px] truncate" title={item.contractName}>
+                          {item.contractName}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
                     <td className="py-3.5 px-4">
                       {getTipoBadge(item.tipo || item.folderName)}
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-500 text-[11px]">
+                    <td className="py-3.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                       {formatDate(item.modifiedTime)}
                     </td>
 

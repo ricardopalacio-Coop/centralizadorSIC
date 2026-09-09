@@ -212,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 }`}
               >
                 <FolderArchive className="h-4 w-4 text-sky-600" />
-                <span className="hidden sm:inline font-bold">Termos/Fichas (Antigos)</span>
+                <span className="hidden sm:inline font-bold">Termos/Fichas (Easy)</span>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
                     isTermosAntigosOpen ? "rotate-180 text-sky-600" : ""

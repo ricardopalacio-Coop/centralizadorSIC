@@ -182,6 +182,27 @@ router.get("/fichas/scan-status", (req: AuthenticatedRequest, res: Response): vo
 });
 
 /**
+ * POST /api/drive/fichas/atualizar-easy
+ * Atualiza Matrícula, Data de Nascimento, Contrato Principal e valida Nome cruzando com a base EasyCoop/SIC
+ */
+router.post("/fichas/atualizar-easy", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await googleDriveService.atualizarEasy();
+    res.json({
+      success: true,
+      message: `Atualização Easy concluída! ${result.updatedCount} fichas atualizadas com Matrícula, Nascimento e Contrato.`,
+      updatedCount: result.updatedCount,
+    });
+  } catch (err: any) {
+    console.error("❌ Erro na rota /api/drive/fichas/atualizar-easy:", err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Falha ao atualizar fichas cadastrais com a base Easy.",
+    });
+  }
+});
+
+/**
  * POST /api/drive/sync
  * Sincroniza metadados dos arquivos do Drive para o MySQL
  */
@@ -243,19 +264,26 @@ router.get("/download/:fileId", async (req: AuthenticatedRequest, res: Response)
 router.put("/fichas/:fileId", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const fileId = Array.isArray(req.params.fileId) ? req.params.fileId[0] : req.params.fileId;
-    const { cooperadoName, cpf } = req.body;
+    const { cooperadoName, cpf, matricula, birthDate, contractName } = req.body;
 
     if (!fileId) {
       res.status(400).json({ error: "ID do arquivo é obrigatório." });
       return;
     }
 
-    if (!cooperadoName && !cpf) {
-      res.status(400).json({ error: "Informe ao menos o Nome ou CPF para atualizar." });
+    if (!cooperadoName && !cpf && !matricula) {
+      res.status(400).json({ error: "Informe ao menos o Nome, CPF ou Matrícula para atualizar." });
       return;
     }
 
-    const updated = await googleDriveService.updateFicha(fileId, cooperadoName, cpf);
+    const updated = await googleDriveService.updateFicha(
+      fileId,
+      cooperadoName,
+      cpf,
+      matricula,
+      birthDate,
+      contractName
+    );
     if (!updated) {
       res.status(404).json({ error: "Ficha não encontrada." });
       return;

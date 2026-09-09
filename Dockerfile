@@ -46,6 +46,7 @@ RUN apt-get update && apt-get install -y \
     python3-pypdf \
     --no-install-recommends \
     && ln -s /usr/bin/python3 /usr/bin/python \
+    && pip3 install --no-cache-dir --break-system-packages pymupdf \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium

@@ -9,6 +9,9 @@ export interface FichaDesligamentoItem {
   name: string;
   cooperadoName: string;
   cpf?: string | null;
+  matricula?: string | null;
+  birthDate?: string | null;
+  contractName?: string | null;
   modifiedTime: string;
   createdTime?: string;
   size?: number;
@@ -434,11 +437,14 @@ class GoogleDriveDesligamentoService {
 
               await pool.query(
                 `UPDATE fichas_desligamento 
-                 SET cooperado_name = ?, cpf = ?, ocr_status = ?, error_message = ?, indexed_at = NOW() 
+                 SET cooperado_name = ?, cpf = ?, matricula = ?, birth_date = ?, contract_name = ?, ocr_status = ?, error_message = ?, indexed_at = NOW() 
                  WHERE file_id = ?;`,
                 [
                   finalName,
                   formattedCpf,
+                  extracted.matricula || null,
+                  extracted.birthDate || null,
+                  extracted.contractName || null,
                   extracted.status,
                   extracted.errorMessage || null,
                   row.file_id,
@@ -571,7 +577,7 @@ class GoogleDriveDesligamentoService {
     const offset = (safePage - 1) * safePageSize;
 
     const [dbRows]: [any[], any] = await pool.query(
-      `SELECT id, file_id, file_name, cooperado_name, cpf, tipo, folder_id, folder_name,
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, contract_name, tipo, folder_id, folder_name,
               mime_type, file_size, drive_modified_time, web_view_link, web_content_link, ocr_status
        FROM fichas_desligamento
        WHERE ${whereSql}
@@ -585,6 +591,11 @@ class GoogleDriveDesligamentoService {
       name: r.file_name,
       cooperadoName: r.cooperado_name,
       cpf: r.cpf,
+      matricula: r.matricula || null,
+      birthDate: r.birth_date
+        ? (r.birth_date instanceof Date ? r.birth_date.toISOString().split("T")[0] : String(r.birth_date).split("T")[0])
+        : null,
+      contractName: r.contract_name || null,
       modifiedTime: r.drive_modified_time
         ? new Date(r.drive_modified_time).toISOString()
         : new Date().toISOString(),
@@ -671,28 +682,76 @@ class GoogleDriveDesligamentoService {
   }
 
   /**
-   * Atualiza manualmente Nome do Cooperado e/ou CPF de um Termo de Desligamento
+   * Atualiza manualmente Nome do Cooperado, CPF, Matrícula, Data de Nascimento e Contrato de um Termo de Desligamento
+   * Grava imediatamente no MySQL centralizador_sic_db para visão global
    */
   public async updateFicha(
     fileId: string,
     cooperadoName: string,
-    cpf?: string | null
+    cpf?: string | null,
+    matricula?: string | null,
+    birthDate?: string | null,
+    contractName?: string | null
   ): Promise<FichaDesligamentoItem | null> {
-    const formattedCpf = cpf ? formatCPF(cpf) : null;
-    const cleanName = cooperadoName?.trim().toUpperCase() || "SEM NOME";
+    let formattedCpf = cpf ? formatCPF(cpf) : null;
+    let cleanName = cooperadoName?.trim().toUpperCase() || "SEM NOME";
+    let finalMatricula = matricula ? matricula.trim() : null;
+    let finalBirthDate = birthDate ? birthDate.trim() : null;
+    let finalContract = contractName ? contractName.trim() : null;
+
+    // Se informou CPF, busca cooperado para validar e preencher campos que faltam
+    if (formattedCpf) {
+      const cooperado = await FichaExtractorService.lookupAndValidateCooperado(formattedCpf);
+      if (cooperado.isValidated) {
+        if (!finalMatricula && cooperado.matricula) finalMatricula = cooperado.matricula;
+        if (!finalBirthDate && cooperado.birthDate) finalBirthDate = cooperado.birthDate;
+        if (!finalContract && cooperado.contractName) finalContract = cooperado.contractName;
+        if (cooperado.name) cleanName = cooperado.name;
+      }
+    } else if (finalMatricula) {
+      try {
+        const [coopRows]: [any[], any] = await pool.query(
+          "SELECT name, document, birth_date, contract_name FROM cooperados WHERE registration_number = ? LIMIT 1;",
+          [finalMatricula]
+        );
+        if (coopRows && coopRows.length > 0) {
+          const c = coopRows[0];
+          formattedCpf = formatCPF(c.document);
+          if (!finalBirthDate && c.birth_date) {
+            finalBirthDate = c.birth_date instanceof Date
+              ? c.birth_date.toISOString().split("T")[0]
+              : String(c.birth_date).split("T")[0];
+          }
+          if (!finalContract && c.contract_name) finalContract = c.contract_name;
+          if (c.name) cleanName = c.name;
+        }
+      } catch (e) {}
+    }
 
     await pool.query(
       `UPDATE fichas_desligamento 
        SET cooperado_name = ?, 
            cpf = ?, 
+           matricula = ?,
+           birth_date = ?,
+           contract_name = ?,
            ocr_status = CASE WHEN ? != '' AND ? IS NOT NULL THEN 'SUCCESS' ELSE ocr_status END, 
            indexed_at = NOW() 
        WHERE file_id = ?;`,
-      [cleanName, formattedCpf, formattedCpf, formattedCpf, fileId]
+      [
+        cleanName,
+        formattedCpf,
+        finalMatricula,
+        finalBirthDate,
+        finalContract,
+        formattedCpf,
+        formattedCpf,
+        fileId,
+      ]
     );
 
     const [rows]: [any[], any] = await pool.query(
-      `SELECT id, file_id, file_name, cooperado_name, cpf, tipo, folder_id, folder_name,
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, contract_name, tipo, folder_id, folder_name,
               mime_type, file_size, drive_modified_time, web_view_link, web_content_link, ocr_status
        FROM fichas_desligamento
        WHERE file_id = ?;`,
@@ -706,6 +765,11 @@ class GoogleDriveDesligamentoService {
       name: r.file_name,
       cooperadoName: r.cooperado_name,
       cpf: r.cpf,
+      matricula: r.matricula || null,
+      birthDate: r.birth_date
+        ? (r.birth_date instanceof Date ? r.birth_date.toISOString().split("T")[0] : String(r.birth_date).split("T")[0])
+        : null,
+      contractName: r.contract_name || null,
       modifiedTime: r.drive_modified_time
         ? new Date(r.drive_modified_time).toISOString()
         : new Date().toISOString(),
@@ -717,6 +781,92 @@ class GoogleDriveDesligamentoService {
       webViewLink: r.web_view_link,
       webContentLink: r.web_content_link,
       ocrStatus: r.ocr_status,
+    };
+  }
+
+  /**
+   * Atualiza em lote Matrícula, Data de Nascimento, Contrato Principal e valida Nome
+   * nos desligamentos cruzando com a base de cooperados do EasyCoop / SIC (suporta CPFs com ou sem zeros à esquerda e matching por matrícula)
+   */
+  public async atualizarEasy(): Promise<{ updatedCount: number }> {
+    // 1. Atualização direta por CPF com LPAD de 11 dígitos para garantir match de zeros à esquerda
+    const [resultCpf]: any = await pool.query(`
+      UPDATE fichas_desligamento f
+      INNER JOIN cooperados c ON LPAD(REPLACE(REPLACE(REPLACE(f.cpf, '.', ''), '-', ''), ' ', ''), 11, '0') = c.document
+      SET 
+        f.matricula = CAST(c.registration_number AS CHAR),
+        f.birth_date = c.birth_date,
+        f.contract_name = c.contract_name,
+        f.cooperado_name = COALESCE(c.name, f.cooperado_name),
+        f.cpf = CONCAT(
+          SUBSTRING(c.document, 1, 3), '.',
+          SUBSTRING(c.document, 4, 3), '.',
+          SUBSTRING(c.document, 7, 3), '-',
+          SUBSTRING(c.document, 10, 2)
+        )
+      WHERE f.cpf IS NOT NULL AND f.cpf != '';
+    `);
+
+    // 2. Para fichas de desligamento ainda sem CPF, busca em lote por matrícula no nome do arquivo (ultra-rápido)
+    let matriculaUpdated = 0;
+    try {
+      const [pendentes]: [any[], any] = await pool.query(`
+        SELECT id, file_name 
+        FROM fichas_desligamento 
+        WHERE (cpf IS NULL OR cpf = '') AND file_name REGEXP '[0-9]{3,6}';
+      `);
+
+      if (pendentes && pendentes.length > 0) {
+        const matToFichaIds = new Map<string, number[]>();
+        for (const p of pendentes) {
+          const m = p.file_name.match(/(?:^|[^0-9])(\d{3,6})(?:[^0-9]|$)/);
+          if (m) {
+            const mat = m[1];
+            if (!matToFichaIds.has(mat)) matToFichaIds.set(mat, []);
+            matToFichaIds.get(mat)!.push(p.id);
+          }
+        }
+
+        const allMats = Array.from(matToFichaIds.keys());
+        for (let i = 0; i < allMats.length; i += 1000) {
+          const chunk = allMats.slice(i, i + 1000);
+          const [coops]: [any[], any] = await pool.query(
+            `SELECT name, document, registration_number, birth_date, contract_name 
+             FROM cooperados 
+             WHERE registration_number IN (?)`,
+            [chunk]
+          );
+
+          for (const c of coops) {
+            const ids = matToFichaIds.get(String(c.registration_number));
+            if (ids && ids.length > 0) {
+              const formattedCpf = formatCPF(c.document);
+              let birthDateStr: string | null = null;
+              if (c.birth_date) {
+                birthDateStr = c.birth_date instanceof Date
+                  ? c.birth_date.toISOString().split("T")[0]
+                  : String(c.birth_date).split("T")[0];
+              }
+
+              await pool.query(
+                `UPDATE fichas_desligamento 
+                 SET matricula = ?, birth_date = ?, contract_name = ?, cooperado_name = ?, cpf = ?, ocr_status = 'SUCCESS'
+                 WHERE id IN (?)`,
+                [String(c.registration_number), birthDateStr, c.contract_name || null, c.name, formattedCpf, ids]
+              );
+              matriculaUpdated += ids.length;
+            }
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn("[FichasDesligamento] Aviso ao enriquecer por matrícula de arquivo:", e.message);
+    }
+
+    const updatedTotal = (resultCpf.affectedRows || 0) + matriculaUpdated;
+
+    return {
+      updatedCount: updatedTotal,
     };
   }
 

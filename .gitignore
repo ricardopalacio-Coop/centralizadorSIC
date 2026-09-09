@@ -19,6 +19,7 @@ installer/Output/
 *.png
 *.jpg
 *.jpeg
+*.traineddata
 
 # Environment & Secret Files
 .env

@@ -111,6 +111,27 @@ router.post("/stop-scan", (req: AuthenticatedRequest, res: Response): void => {
 });
 
 /**
+ * POST /api/drive/desligamento/atualizar-easy
+ * Atualiza Matrícula, Data de Nascimento, Contrato Principal e valida Nome cruzando com a base EasyCoop/SIC
+ */
+router.post("/atualizar-easy", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await googleDriveDesligamentoService.atualizarEasy();
+    res.json({
+      success: true,
+      message: `Atualização Easy concluída! ${result.updatedCount} termos de desligamento atualizados com Matrícula, Nascimento e Contrato.`,
+      updatedCount: result.updatedCount,
+    });
+  } catch (err: any) {
+    console.error("❌ Erro na rota /api/drive/desligamento/atualizar-easy:", err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Falha ao atualizar termos de desligamento com a base Easy.",
+    });
+  }
+});
+
+/**
  * POST /api/drive/desligamento/sync
  * Sincroniza metadados dos arquivos de Desligamento do Drive para o MySQL
  */
@@ -172,19 +193,26 @@ router.get("/download/:fileId", async (req: AuthenticatedRequest, res: Response)
 router.put("/fichas/:fileId", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const fileId = Array.isArray(req.params.fileId) ? req.params.fileId[0] : req.params.fileId;
-    const { cooperadoName, cpf } = req.body;
+    const { cooperadoName, cpf, matricula, birthDate, contractName } = req.body;
 
     if (!fileId) {
       res.status(400).json({ error: "ID do arquivo é obrigatório." });
       return;
     }
 
-    if (!cooperadoName && !cpf) {
-      res.status(400).json({ error: "Informe ao menos o Nome ou CPF para atualizar." });
+    if (!cooperadoName && !cpf && !matricula) {
+      res.status(400).json({ error: "Informe ao menos o Nome, CPF ou Matrícula para atualizar." });
       return;
     }
 
-    const updated = await googleDriveDesligamentoService.updateFicha(fileId, cooperadoName, cpf);
+    const updated = await googleDriveDesligamentoService.updateFicha(
+      fileId,
+      cooperadoName,
+      cpf,
+      matricula,
+      birthDate,
+      contractName
+    );
     if (!updated) {
       res.status(404).json({ error: "Termo de desligamento não encontrado." });
       return;
