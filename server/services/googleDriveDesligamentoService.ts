@@ -11,6 +11,7 @@ export interface FichaDesligamentoItem {
   cpf?: string | null;
   matricula?: string | null;
   birthDate?: string | null;
+  terminationDate?: string | null;
   contractName?: string | null;
   modifiedTime: string;
   createdTime?: string;
@@ -437,13 +438,14 @@ class GoogleDriveDesligamentoService {
 
               await pool.query(
                 `UPDATE fichas_desligamento 
-                 SET cooperado_name = ?, cpf = ?, matricula = ?, birth_date = ?, contract_name = ?, ocr_status = ?, error_message = ?, indexed_at = NOW() 
+                 SET cooperado_name = ?, cpf = ?, matricula = ?, birth_date = ?, termination_date = ?, contract_name = ?, ocr_status = ?, error_message = ?, indexed_at = NOW() 
                  WHERE file_id = ?;`,
                 [
                   finalName,
                   formattedCpf,
                   extracted.matricula || null,
                   extracted.birthDate || null,
+                  extracted.terminationDate || null,
                   extracted.contractName || null,
                   extracted.status,
                   extracted.errorMessage || null,
@@ -577,7 +579,7 @@ class GoogleDriveDesligamentoService {
     const offset = (safePage - 1) * safePageSize;
 
     const [dbRows]: [any[], any] = await pool.query(
-      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, contract_name, tipo, folder_id, folder_name,
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, termination_date, contract_name, tipo, folder_id, folder_name,
               mime_type, file_size, drive_modified_time, web_view_link, web_content_link, ocr_status
        FROM fichas_desligamento
        WHERE ${whereSql}
@@ -594,6 +596,9 @@ class GoogleDriveDesligamentoService {
       matricula: r.matricula || null,
       birthDate: r.birth_date
         ? (r.birth_date instanceof Date ? r.birth_date.toISOString().split("T")[0] : String(r.birth_date).split("T")[0])
+        : null,
+      terminationDate: r.termination_date
+        ? (r.termination_date instanceof Date ? r.termination_date.toISOString().split("T")[0] : String(r.termination_date).split("T")[0])
         : null,
       contractName: r.contract_name || null,
       modifiedTime: r.drive_modified_time
@@ -691,12 +696,14 @@ class GoogleDriveDesligamentoService {
     cpf?: string | null,
     matricula?: string | null,
     birthDate?: string | null,
-    contractName?: string | null
+    contractName?: string | null,
+    terminationDate?: string | null
   ): Promise<FichaDesligamentoItem | null> {
     let formattedCpf = cpf ? formatCPF(cpf) : null;
     let cleanName = cooperadoName?.trim().toUpperCase() || "SEM NOME";
     let finalMatricula = matricula ? matricula.trim() : null;
     let finalBirthDate = birthDate ? birthDate.trim() : null;
+    let finalTerminationDate = terminationDate ? terminationDate.trim() : null;
     let finalContract = contractName ? contractName.trim() : null;
 
     // Se informou CPF, busca cooperado para validar e preencher campos que faltam
@@ -705,13 +712,14 @@ class GoogleDriveDesligamentoService {
       if (cooperado.isValidated) {
         if (!finalMatricula && cooperado.matricula) finalMatricula = cooperado.matricula;
         if (!finalBirthDate && cooperado.birthDate) finalBirthDate = cooperado.birthDate;
+        if (!finalTerminationDate && cooperado.terminationDate) finalTerminationDate = cooperado.terminationDate;
         if (!finalContract && cooperado.contractName) finalContract = cooperado.contractName;
         if (cooperado.name) cleanName = cooperado.name;
       }
     } else if (finalMatricula) {
       try {
         const [coopRows]: [any[], any] = await pool.query(
-          "SELECT name, document, birth_date, contract_name FROM cooperados WHERE registration_number = ? LIMIT 1;",
+          "SELECT name, document, birth_date, termination_date, contract_name FROM cooperados WHERE registration_number = ? LIMIT 1;",
           [finalMatricula]
         );
         if (coopRows && coopRows.length > 0) {
@@ -721,6 +729,11 @@ class GoogleDriveDesligamentoService {
             finalBirthDate = c.birth_date instanceof Date
               ? c.birth_date.toISOString().split("T")[0]
               : String(c.birth_date).split("T")[0];
+          }
+          if (!finalTerminationDate && c.termination_date) {
+            finalTerminationDate = c.termination_date instanceof Date
+              ? c.termination_date.toISOString().split("T")[0]
+              : String(c.termination_date).split("T")[0];
           }
           if (!finalContract && c.contract_name) finalContract = c.contract_name;
           if (c.name) cleanName = c.name;
@@ -734,6 +747,7 @@ class GoogleDriveDesligamentoService {
            cpf = ?, 
            matricula = ?,
            birth_date = ?,
+           termination_date = ?,
            contract_name = ?,
            ocr_status = CASE WHEN ? != '' AND ? IS NOT NULL THEN 'SUCCESS' ELSE ocr_status END, 
            indexed_at = NOW() 
@@ -743,6 +757,7 @@ class GoogleDriveDesligamentoService {
         formattedCpf,
         finalMatricula,
         finalBirthDate,
+        finalTerminationDate,
         finalContract,
         formattedCpf,
         formattedCpf,
@@ -751,7 +766,7 @@ class GoogleDriveDesligamentoService {
     );
 
     const [rows]: [any[], any] = await pool.query(
-      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, contract_name, tipo, folder_id, folder_name,
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, birth_date, termination_date, contract_name, tipo, folder_id, folder_name,
               mime_type, file_size, drive_modified_time, web_view_link, web_content_link, ocr_status
        FROM fichas_desligamento
        WHERE file_id = ?;`,
@@ -768,6 +783,9 @@ class GoogleDriveDesligamentoService {
       matricula: r.matricula || null,
       birthDate: r.birth_date
         ? (r.birth_date instanceof Date ? r.birth_date.toISOString().split("T")[0] : String(r.birth_date).split("T")[0])
+        : null,
+      terminationDate: r.termination_date
+        ? (r.termination_date instanceof Date ? r.termination_date.toISOString().split("T")[0] : String(r.termination_date).split("T")[0])
         : null,
       contractName: r.contract_name || null,
       modifiedTime: r.drive_modified_time
@@ -796,7 +814,8 @@ class GoogleDriveDesligamentoService {
       SET 
         f.matricula = CAST(c.registration_number AS CHAR),
         f.birth_date = c.birth_date,
-        f.contract_name = c.contract_name,
+        f.termination_date = c.termination_date,
+        f.contract_name = COALESCE(NULLIF(f.contract_name, ''), c.contract_name),
         f.cooperado_name = COALESCE(c.name, f.cooperado_name),
         f.cpf = CONCAT(
           SUBSTRING(c.document, 1, 3), '.',
@@ -807,7 +826,62 @@ class GoogleDriveDesligamentoService {
       WHERE f.cpf IS NOT NULL AND f.cpf != '';
     `);
 
-    // 2. Para fichas de desligamento ainda sem CPF, busca em lote por matrícula no nome do arquivo (ultra-rápido)
+    // 2. Resolve o Contrato Operacional Real via easycoop_alocacoes (descartando sobras, descansos e 'COOPEDU')
+    const contractByDoc = new Map<string, string>();
+    try {
+      const [alocRows]: [any[], any] = await pool.query(`
+        SELECT a.document,
+               COALESCE(NULLIF(a.contrato_descricao, ''), a.tomador_nome) AS contrato_operacional
+        FROM easycoop_alocacoes a
+        WHERE a.document IS NOT NULL AND a.document != ''
+        ORDER BY 
+          (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+          (CASE 
+            WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DESCANSO%' OR UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DAR%' THEN 4
+            WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%SOBRA%' THEN 3
+            WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COORDENA%' THEN 2
+            WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COOPEDU%' THEN 2
+            ELSE 1
+          END) ASC,
+          a.data_inicio DESC,
+          a.id DESC;
+      `);
+
+      for (const row of alocRows) {
+        const cleanDoc = String(row.document).replace(/\D/g, "").padStart(11, "0");
+        if (cleanDoc && !contractByDoc.has(cleanDoc) && row.contrato_operacional) {
+          contractByDoc.set(cleanDoc, String(row.contrato_operacional).trim());
+        }
+      }
+
+      if (contractByDoc.size > 0) {
+        const cpfsByContract = new Map<string, string[]>();
+        for (const [doc, contract] of contractByDoc.entries()) {
+          if (!cpfsByContract.has(contract)) {
+            cpfsByContract.set(contract, []);
+          }
+          const formatted = `${doc.slice(0, 3)}.${doc.slice(3, 6)}.${doc.slice(6, 9)}-${doc.slice(9, 11)}`;
+          cpfsByContract.get(contract)!.push(formatted);
+          cpfsByContract.get(contract)!.push(doc);
+        }
+
+        for (const [contract, cpfs] of cpfsByContract.entries()) {
+          for (let i = 0; i < cpfs.length; i += 500) {
+            const chunk = cpfs.slice(i, i + 500);
+            await pool.query(
+              `UPDATE fichas_desligamento 
+               SET contract_name = ?
+               WHERE (cpf IN (?) OR REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') IN (?));`,
+              [contract, chunk, chunk]
+            );
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn("[FichasDesligamento] Aviso ao atualizar contratos operacionais:", e.message);
+    }
+
+    // 3. Para fichas de desligamento ainda sem CPF, busca em lote por matrícula no nome do arquivo (ultra-rápido)
     let matriculaUpdated = 0;
     try {
       const [pendentes]: [any[], any] = await pool.query(`
@@ -831,7 +905,7 @@ class GoogleDriveDesligamentoService {
         for (let i = 0; i < allMats.length; i += 1000) {
           const chunk = allMats.slice(i, i + 1000);
           const [coops]: [any[], any] = await pool.query(
-            `SELECT name, document, registration_number, birth_date, contract_name 
+            `SELECT name, document, registration_number, birth_date, termination_date, contract_name 
              FROM cooperados 
              WHERE registration_number IN (?)`,
             [chunk]
@@ -847,12 +921,20 @@ class GoogleDriveDesligamentoService {
                   ? c.birth_date.toISOString().split("T")[0]
                   : String(c.birth_date).split("T")[0];
               }
+              let termDateStr: string | null = null;
+              if (c.termination_date) {
+                termDateStr = c.termination_date instanceof Date
+                  ? c.termination_date.toISOString().split("T")[0]
+                  : String(c.termination_date).split("T")[0];
+              }
+              const cleanDoc = String(c.document).replace(/\D/g, "").padStart(11, "0");
+              const operationalContract = contractByDoc.get(cleanDoc) || c.contract_name || null;
 
               await pool.query(
                 `UPDATE fichas_desligamento 
-                 SET matricula = ?, birth_date = ?, contract_name = ?, cooperado_name = ?, cpf = ?, ocr_status = 'SUCCESS'
+                 SET matricula = ?, birth_date = ?, termination_date = ?, contract_name = ?, cooperado_name = ?, cpf = ?, ocr_status = 'SUCCESS'
                  WHERE id IN (?)`,
-                [String(c.registration_number), birthDateStr, c.contract_name || null, c.name, formattedCpf, ids]
+                [String(c.registration_number), birthDateStr, termDateStr, operationalContract, c.name, formattedCpf, ids]
               );
               matriculaUpdated += ids.length;
             }

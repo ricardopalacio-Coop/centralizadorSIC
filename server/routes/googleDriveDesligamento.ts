@@ -193,7 +193,7 @@ router.get("/download/:fileId", async (req: AuthenticatedRequest, res: Response)
 router.put("/fichas/:fileId", async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const fileId = Array.isArray(req.params.fileId) ? req.params.fileId[0] : req.params.fileId;
-    const { cooperadoName, cpf, matricula, birthDate, contractName } = req.body;
+    const { cooperadoName, cpf, matricula, birthDate, contractName, terminationDate } = req.body;
 
     if (!fileId) {
       res.status(400).json({ error: "ID do arquivo é obrigatório." });
@@ -211,7 +211,8 @@ router.put("/fichas/:fileId", async (req: AuthenticatedRequest, res: Response): 
       cpf,
       matricula,
       birthDate,
-      contractName
+      contractName,
+      terminationDate
     );
     if (!updated) {
       res.status(404).json({ error: "Termo de desligamento não encontrado." });

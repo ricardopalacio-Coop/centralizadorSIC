@@ -12,6 +12,7 @@ export interface ExtractedFichaData {
   cooperadoName: string;
   matricula?: string | null;
   birthDate?: string | null;
+  terminationDate?: string | null;
   contractName?: string | null;
   rawText: string;
   status: "SUCCESS" | "UNREADABLE" | "FAILED";
@@ -308,13 +309,14 @@ export class FichaExtractorService {
 
   /**
    * Consulta a base mestre de cooperados pelo CPF para validar o Nome Completo oficial
-   * e trazer Matrícula, Data de Nascimento e Contrato Principal
+   * e trazer Matrícula, Data de Nascimento, Data de Desligamento e Contrato Principal Operacional
    */
   public static async lookupAndValidateCooperado(cpf: string): Promise<{
     isValidated: boolean;
     name?: string;
     matricula?: string;
     birthDate?: string;
+    terminationDate?: string;
     contractName?: string;
   }> {
     if (!cpf) return { isValidated: false };
@@ -323,7 +325,7 @@ export class FichaExtractorService {
 
     try {
       const [rows]: [any[], any] = await pool.query(
-        `SELECT c.name, c.registration_number, c.birth_date, c.contract_name
+        `SELECT c.name, c.registration_number, c.birth_date, c.termination_date, c.contract_name
          FROM cooperados c
          WHERE c.document = ?
          LIMIT 1;`,
@@ -338,13 +340,46 @@ export class FichaExtractorService {
             ? c.birth_date.toISOString().split("T")[0]
             : String(c.birth_date).split("T")[0];
         }
+        let termDateStr: string | undefined = undefined;
+        if (c.termination_date) {
+          termDateStr = c.termination_date instanceof Date
+            ? c.termination_date.toISOString().split("T")[0]
+            : String(c.termination_date).split("T")[0];
+        }
+
+        // Tenta buscar o contrato operacional real na tabela easycoop_alocacoes
+        let resolvedContract = c.contract_name || undefined;
+        try {
+          const [alocRows]: [any[], any] = await pool.query(
+            `SELECT COALESCE(NULLIF(a.contrato_descricao, ''), a.tomador_nome) AS contrato_operacional
+             FROM easycoop_alocacoes a
+             WHERE a.document = ?
+             ORDER BY 
+               (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+               (CASE 
+                 WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DESCANSO%' OR UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DAR%' THEN 4
+                 WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%SOBRA%' THEN 3
+                 WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COORDENA%' THEN 2
+                 WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COOPEDU%' THEN 2
+                 ELSE 1
+               END) ASC,
+               a.data_inicio DESC,
+               a.id DESC
+             LIMIT 1;`,
+            [cleanDoc]
+          );
+          if (alocRows && alocRows.length > 0 && alocRows[0].contrato_operacional) {
+            resolvedContract = String(alocRows[0].contrato_operacional).trim();
+          }
+        } catch (e) {}
 
         return {
           isValidated: true,
           name: c.name?.trim().toUpperCase(),
           matricula: c.registration_number ? String(c.registration_number) : undefined,
           birthDate: birthDateStr,
-          contractName: c.contract_name || undefined,
+          terminationDate: termDateStr,
+          contractName: resolvedContract,
         };
       }
     } catch (err: any) {
@@ -367,6 +402,7 @@ export class FichaExtractorService {
     name?: string;
     matricula?: string;
     birthDate?: string;
+    terminationDate?: string;
     contractName?: string;
   }> {
     const combined = `${fileName || ""} ${rawText || ""}`.trim();
@@ -379,7 +415,7 @@ export class FichaExtractorService {
       const matriculaMatches = `${cleanFileName} ${rawText || ""}`.match(/\b(\d{3,6})\b/g) || [];
       for (const mat of matriculaMatches) {
         const [rows]: [any[], any] = await pool.query(
-          `SELECT c.name, c.document, c.registration_number, c.birth_date, c.contract_name
+          `SELECT c.name, c.document, c.registration_number, c.birth_date, c.termination_date, c.contract_name
            FROM cooperados c
            WHERE c.registration_number = ?
            LIMIT 1;`,
@@ -401,13 +437,45 @@ export class FichaExtractorService {
                 ? c.birth_date.toISOString().split("T")[0]
                 : String(c.birth_date).split("T")[0];
             }
+            let termDateStr: string | undefined = undefined;
+            if (c.termination_date) {
+              termDateStr = c.termination_date instanceof Date
+                ? c.termination_date.toISOString().split("T")[0]
+                : String(c.termination_date).split("T")[0];
+            }
+            let resolvedContract = c.contract_name || undefined;
+            try {
+              const [alocRows]: [any[], any] = await pool.query(
+                `SELECT COALESCE(NULLIF(a.contrato_descricao, ''), a.tomador_nome) AS contrato_operacional
+                 FROM easycoop_alocacoes a
+                 WHERE a.document = ?
+                 ORDER BY 
+                   (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+                   (CASE 
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DESCANSO%' OR UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DAR%' THEN 4
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%SOBRA%' THEN 3
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COORDENA%' THEN 2
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COOPEDU%' THEN 2
+                     ELSE 1
+                   END) ASC,
+                   a.data_inicio DESC,
+                   a.id DESC
+                 LIMIT 1;`,
+                [c.document]
+              );
+              if (alocRows && alocRows.length > 0 && alocRows[0].contrato_operacional) {
+                resolvedContract = String(alocRows[0].contrato_operacional).trim();
+              }
+            } catch (e) {}
+
             return {
               isValidated: true,
               cpf: formatCPF(c.document) || undefined,
               name: c.name?.trim().toUpperCase(),
               matricula: String(c.registration_number),
               birthDate: birthDateStr,
-              contractName: c.contract_name || undefined,
+              terminationDate: termDateStr,
+              contractName: resolvedContract,
             };
           }
         }
@@ -420,7 +488,7 @@ export class FichaExtractorService {
         if (nameParts.length >= 2) {
           const searchLike = `%${nameParts[0]}%${nameParts[nameParts.length - 1]}%`;
           const [rows]: [any[], any] = await pool.query(
-            `SELECT c.name, c.document, c.registration_number, c.birth_date, c.contract_name
+            `SELECT c.name, c.document, c.registration_number, c.birth_date, c.termination_date, c.contract_name
              FROM cooperados c
              WHERE c.name LIKE ?
              LIMIT 2;`,
@@ -435,13 +503,45 @@ export class FichaExtractorService {
                 ? c.birth_date.toISOString().split("T")[0]
                 : String(c.birth_date).split("T")[0];
             }
+            let termDateStr: string | undefined = undefined;
+            if (c.termination_date) {
+              termDateStr = c.termination_date instanceof Date
+                ? c.termination_date.toISOString().split("T")[0]
+                : String(c.termination_date).split("T")[0];
+            }
+            let resolvedContract = c.contract_name || undefined;
+            try {
+              const [alocRows]: [any[], any] = await pool.query(
+                `SELECT COALESCE(NULLIF(a.contrato_descricao, ''), a.tomador_nome) AS contrato_operacional
+                 FROM easycoop_alocacoes a
+                 WHERE a.document = ?
+                 ORDER BY 
+                   (CASE WHEN a.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+                   (CASE 
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DESCANSO%' OR UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%DAR%' THEN 4
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%SOBRA%' THEN 3
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COORDENA%' THEN 2
+                     WHEN UPPER(COALESCE(a.contrato_descricao, a.tomador_nome, '')) LIKE '%COOPEDU%' THEN 2
+                     ELSE 1
+                   END) ASC,
+                   a.data_inicio DESC,
+                   a.id DESC
+                 LIMIT 1;`,
+                [c.document]
+              );
+              if (alocRows && alocRows.length > 0 && alocRows[0].contrato_operacional) {
+                resolvedContract = String(alocRows[0].contrato_operacional).trim();
+              }
+            } catch (e) {}
+
             return {
               isValidated: true,
               cpf: formatCPF(c.document) || undefined,
               name: c.name?.trim().toUpperCase(),
               matricula: c.registration_number ? String(c.registration_number) : undefined,
               birthDate: birthDateStr,
-              contractName: c.contract_name || undefined,
+              terminationDate: termDateStr,
+              contractName: resolvedContract,
             };
           }
         }
@@ -535,6 +635,7 @@ export class FichaExtractorService {
       let cooperadoName = extractNameFromText(rawText, fileName);
       let matricula: string | null = null;
       let birthDate: string | null = null;
+      let terminationDate: string | null = null;
       let contractName: string | null = null;
       let isValidated = false;
 
@@ -545,6 +646,7 @@ export class FichaExtractorService {
           cooperadoName = clues.name || cooperadoName;
           matricula = clues.matricula || null;
           birthDate = clues.birthDate || null;
+          terminationDate = clues.terminationDate || null;
           contractName = clues.contractName || null;
           isValidated = true;
           console.log(`[FichaExtractor] Cooperado localizado via pistas (Matrícula/Nome): ${cooperadoName} | CPF: ${cpf}`);
@@ -558,6 +660,7 @@ export class FichaExtractorService {
           cooperadoName = validated.name; // Nome Completo 100% validado pela base oficial
           matricula = validated.matricula || null;
           birthDate = validated.birthDate || null;
+          terminationDate = validated.terminationDate || null;
           contractName = validated.contractName || null;
           isValidated = true;
         }
@@ -568,6 +671,7 @@ export class FichaExtractorService {
         cooperadoName,
         matricula,
         birthDate,
+        terminationDate,
         contractName,
         isValidated,
         rawText: rawText.substring(0, 3000),

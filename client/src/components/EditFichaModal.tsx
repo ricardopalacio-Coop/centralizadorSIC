@@ -25,6 +25,7 @@ interface EditFichaModalProps {
     cpf?: string | null;
     matricula?: string | null;
     birthDate?: string | null;
+    terminationDate?: string | null;
     contractName?: string | null;
     tipo: string;
     folderName?: string;

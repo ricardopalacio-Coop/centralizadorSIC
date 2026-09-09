@@ -220,6 +220,7 @@ export async function initDb() {
         cpf VARCHAR(20) NULL,
         matricula VARCHAR(50) NULL,
         birth_date DATE NULL,
+        termination_date DATE NULL,
         contract_name VARCHAR(255) NULL,
         tipo VARCHAR(100) NOT NULL DEFAULT 'Desligamento',
         folder_id VARCHAR(100) NOT NULL,
@@ -249,7 +250,10 @@ export async function initDb() {
       await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN birth_date DATE NULL AFTER matricula;");
     } catch (e) {}
     try {
-      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN contract_name VARCHAR(255) NULL AFTER birth_date;");
+      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN termination_date DATE NULL AFTER birth_date;");
+    } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE fichas_desligamento ADD COLUMN contract_name VARCHAR(255) NULL AFTER termination_date;");
     } catch (e) {}
 
     // 7. Tabelas EasyCoop Analytics (Contratos, Alocações, Documentos, Fechamentos, etc.)

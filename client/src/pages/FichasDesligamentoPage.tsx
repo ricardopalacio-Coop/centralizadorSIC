@@ -36,6 +36,7 @@ export interface FichaDesligamentoItem {
   cpf?: string | null;
   matricula?: string | null;
   birthDate?: string | null;
+  terminationDate?: string | null;
   contractName?: string | null;
   modifiedTime: string;
   createdTime?: string;
@@ -697,6 +698,7 @@ export const FichasDesligamentoPage: React.FC = () => {
                 <th className="py-3.5 px-4">CPF Identificado</th>
                 <th className="py-3.5 px-4">Matrícula</th>
                 <th className="py-3.5 px-4">Data Nasc.</th>
+                <th className="py-3.5 px-4">Data Desligamento</th>
                 <th className="py-3.5 px-4">Contrato Principal</th>
                 <th className="py-3.5 px-4">Pasta / Tipo</th>
                 <th className="py-3.5 px-4">Última Modificação</th>
@@ -706,14 +708,14 @@ export const FichasDesligamentoPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-rose-600 mb-2" />
                     <span>Carregando termos de desligamento...</span>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <AlertCircle className="h-6 w-6 mx-auto text-slate-300 mb-2" />
                     <span>Nenhum termo de desligamento encontrado com os filtros aplicados.</span>
                   </td>
@@ -770,6 +772,17 @@ export const FichasDesligamentoPage: React.FC = () => {
                       {item.birthDate ? (
                         <span className="font-mono text-xs">
                           {formatBirthDate(item.birthDate)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
+
+                    {/* Data de Desligamento */}
+                    <td className="py-3.5 px-4 text-slate-700 font-medium whitespace-nowrap">
+                      {item.terminationDate ? (
+                        <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-100 font-semibold inline-block">
+                          {formatBirthDate(item.terminationDate)}
                         </span>
                       ) : (
                         <span className="text-slate-400 text-[11px]">-</span>
