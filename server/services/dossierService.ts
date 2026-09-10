@@ -265,3 +265,197 @@ export async function generateDossierPdf(
     hasFichaAttached,
   };
 }
+
+export interface BatchCooperadoItem {
+  id?: number;
+  originalName: string;
+  found: boolean;
+  name: string;
+  cpf: string | null;
+  matricula: string | number | null;
+  contractName: string | null;
+  status: string | null;
+  base: "SIC" | "EasyCoop" | "Ambas" | "Não Localizado";
+  hasExtrato: boolean;
+  hasDemonstrativo: boolean;
+  hasFicha: boolean;
+  hasMissingItems: boolean;
+}
+
+export interface BatchCheckResult {
+  items: BatchCooperadoItem[];
+  total: number;
+  foundCount: number;
+  notFoundCount: number;
+  completeCount: number;
+  partialCount: number;
+}
+
+/**
+ * Processa lote de nomes, identifica o cooperado, sua base e diagnostica a presença dos 3 relatórios
+ */
+export async function checkBatchDossierCooperados(rawNames: string[]): Promise<BatchCheckResult> {
+  const cleanNames = Array.from(
+    new Set(
+      (rawNames || [])
+        .map((n) => String(n || "").trim().replace(/\s+/g, " "))
+        .filter((n) => n.length >= 3)
+    )
+  );
+
+  const items: BatchCooperadoItem[] = [];
+
+  for (const origName of cleanNames) {
+    // 1. Busca por nome com correspondência exata ou por fragmentos
+    const words = origName.split(/\s+/).filter((w) => w.length > 1);
+
+    let sql = `
+      SELECT id, document, registration_number, name, contract_name, status, sic_id
+      FROM cooperados
+      WHERE name = ? OR name LIKE ?
+    `;
+    const params: any[] = [origName, `%${origName}%`];
+
+    if (words.length >= 2) {
+      const wordClauses = words.map(() => `name LIKE ?`).join(" AND ");
+      sql += ` OR (${wordClauses})`;
+      words.forEach((w) => params.push(`%${w}%`));
+    }
+
+    sql += ` ORDER BY (CASE WHEN status = 'Ativo' THEN 0 ELSE 1 END) ASC, id DESC LIMIT 1`;
+
+    let [coopRows] = await pool.query<any[]>(sql, params);
+    let coop = coopRows && coopRows.length > 0 ? coopRows[0] : null;
+
+    // Se não encontrou em cooperados, tenta buscar por nome em fichas_cadastrais
+    if (!coop && words.length >= 2) {
+      const [fichaNameRows] = await pool.query<any[]>(
+        `SELECT id, cooperado_name AS name, cpf AS document, matricula AS registration_number, contract_name
+         FROM fichas_cadastrais
+         WHERE cooperado_name LIKE ?
+         ORDER BY id DESC LIMIT 1`,
+        [`%${origName}%`]
+      );
+      if (fichaNameRows && fichaNameRows.length > 0) {
+        coop = {
+          ...fichaNameRows[0],
+          status: "Ativo",
+          sic_id: null,
+        };
+      }
+    }
+
+    if (!coop) {
+      items.push({
+        originalName: origName,
+        found: false,
+        name: origName,
+        cpf: null,
+        matricula: null,
+        contractName: null,
+        status: null,
+        base: "Não Localizado",
+        hasExtrato: false,
+        hasDemonstrativo: false,
+        hasFicha: false,
+        hasMissingItems: true,
+      });
+      continue;
+    }
+
+    const docDigits = (coop.document || "").replace(/\D/g, "");
+    const matr = coop.registration_number ? String(coop.registration_number) : "";
+
+    // 2. Diagnóstico da Base (SIC / EasyCoop / Ambas)
+    const hasSicData = Boolean(coop.sic_id);
+
+    let hasEasycoopData = false;
+    if (docDigits) {
+      const [alocRows] = await pool.query<any[]>(
+        `SELECT 1 FROM easycoop_alocacoes WHERE document = ? LIMIT 1`,
+        [docDigits]
+      );
+      const [fechRows] = await pool.query<any[]>(
+        `SELECT 1 FROM easycoop_fechamentos WHERE document = ? LIMIT 1`,
+        [docDigits]
+      );
+      hasEasycoopData = (alocRows && alocRows.length > 0) || (fechRows && fechRows.length > 0);
+    }
+
+    let base: "SIC" | "EasyCoop" | "Ambas" = "SIC";
+    if (hasSicData && hasEasycoopData) {
+      base = "Ambas";
+    } else if (hasEasycoopData) {
+      base = "EasyCoop";
+    } else {
+      base = "SIC";
+    }
+
+    // 3. Verificação dos 3 Relatórios
+    // Relatório 1: Extrato de Repasses e Lançamentos
+    let hasExtrato = false;
+    if (docDigits) {
+      const [extRows] = await pool.query<any[]>(
+        `SELECT 1 FROM easycoop_fechamentos WHERE document = ? LIMIT 1`,
+        [docDigits]
+      );
+      hasExtrato = Boolean(extRows && extRows.length > 0);
+    }
+
+    // Relatório 2: Demonstrativo de Produtividade e Repasse
+    let hasDemonstrativo = false;
+    if (docDigits) {
+      const [demRows] = await pool.query<any[]>(
+        `SELECT 1 FROM easycoop_fechamentos WHERE document = ? AND (ano IS NOT NULL AND mes IS NOT NULL) LIMIT 1`,
+        [docDigits]
+      );
+      hasDemonstrativo = Boolean(demRows && demRows.length > 0);
+    }
+
+    // Relatório 3: Ficha de Adesão Easy
+    let hasFicha = false;
+    if (docDigits || matr) {
+      const [fichaRows] = await pool.query<any[]>(
+        `SELECT id FROM fichas_cadastrais
+         WHERE (REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), '/', '') = ?
+                OR (matricula IS NOT NULL AND matricula != '' AND matricula = ?))
+         LIMIT 1`,
+        [docDigits, matr]
+      );
+      hasFicha = Boolean(fichaRows && fichaRows.length > 0);
+    }
+
+    const hasMissingItems = !hasExtrato || !hasDemonstrativo || !hasFicha;
+
+    items.push({
+      id: coop.id,
+      originalName: origName,
+      found: true,
+      name: toUpperWithAccents(coop.name),
+      cpf: coop.document || null,
+      matricula: coop.registration_number || "-",
+      contractName: toUpperWithAccents(coop.contract_name || "NÃO INFORMADO"),
+      status: coop.status || "Ativo",
+      base,
+      hasExtrato,
+      hasDemonstrativo,
+      hasFicha,
+      hasMissingItems,
+    });
+  }
+
+  const foundCount = items.filter((i) => i.found).length;
+  const notFoundCount = items.filter((i) => !i.found).length;
+  const completeCount = items.filter((i) => i.found && !i.hasMissingItems).length;
+  const partialCount = items.filter((i) => i.found && i.hasMissingItems).length;
+
+  return {
+    items,
+    total: items.length,
+    foundCount,
+    notFoundCount,
+    completeCount,
+    partialCount,
+  };
+}
+

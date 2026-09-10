@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { authenticateToken, AuthenticatedRequest } from "../middlewares/auth";
 import { searchEasycoopCooperados } from "../services/easycoopService";
-import { getDossierInfo, generateDossierPdf } from "../services/dossierService";
+import { getDossierInfo, generateDossierPdf, checkBatchDossierCooperados } from "../services/dossierService";
 
 const router = Router();
 
@@ -75,6 +75,26 @@ router.get("/pdf/:cpf", async (req: AuthenticatedRequest, res: Response) => {
   } catch (error: any) {
     console.error("[Dossier Route Error] Falha ao gerar PDF unificado do Dossiê:", error.message);
     return res.status(500).json({ error: error.message || "Falha ao gerar o PDF unificado do Dossiê." });
+  }
+});
+
+/**
+ * POST /api/dossie/batch/check
+ * Processa uma lista de nomes em lote, buscando o CPF, diagnosticando a base (SIC, EasyCoop ou Ambas)
+ * e verificando a disponibilidade dos 3 relatórios oficiais (Extrato, Demonstrativo, Ficha).
+ */
+router.post("/batch/check", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const rawNames = req.body?.names;
+    if (!Array.isArray(rawNames) || rawNames.length === 0) {
+      return res.status(400).json({ error: "Lista de nomes inválida ou vazia." });
+    }
+
+    const result = await checkBatchDossierCooperados(rawNames);
+    return res.json(result);
+  } catch (error: any) {
+    console.error("[Dossier Route Error] Erro ao processar lote de cooperados:", error.message);
+    return res.status(500).json({ error: error.message || "Falha ao processar lista de cooperados em lote." });
   }
 });
 
