@@ -231,6 +231,163 @@ export async function getSicSessionStatus(): Promise<{
   }
 }
 
+let isRefreshing = false;
+
+/**
+ * Renova a sessão do SIC chamando o endpoint oficial /api/refresh-token do portal SIC
+ */
+export async function refreshSicSession(): Promise<{ success: boolean; message: string; expiresAt?: string }> {
+  if (isRefreshing) {
+    return { success: false, message: "Renovação já em andamento." };
+  }
+
+  isRefreshing = true;
+  try {
+    // 1. Obtém a sessão ativa mais recente
+    let currentToken = sessionCache?.jwtToken;
+    let currentCookie = sessionCache?.cookieHeader;
+
+    if (!currentToken) {
+      const [rows] = await pool.query<any[]>(
+        "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('sic_web_session_token', 'sic_web_session_cookie')"
+      );
+      if (rows && rows.length > 0) {
+        const tRow = rows.find((r: any) => r.setting_key === "sic_web_session_token");
+        const cRow = rows.find((r: any) => r.setting_key === "sic_web_session_cookie");
+        if (tRow?.setting_value) currentToken = tRow.setting_value;
+        if (cRow?.setting_value) currentCookie = cRow.setting_value;
+      }
+    }
+
+    if (!currentToken) {
+      throw new Error("Nenhuma sessão do SIC registrada para renovar.");
+    }
+
+    if (!currentCookie) {
+      const cookieVal = encodeURIComponent(
+        JSON.stringify({
+          key: "coopedu-auth-prod",
+          value: currentToken,
+        })
+      );
+      currentCookie = `coopedu-auth-prod=${cookieVal}`;
+    }
+
+    console.log("[SIC Auto-Refresh] 🔄 Disparando chamada ao endpoint oficial /api/refresh-token do portal SIC...");
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${currentToken}`,
+      Cookie: currentCookie,
+      Origin: "https://ui.coopedu.app.br",
+      Referer: "https://ui.coopedu.app.br/",
+      "Content-Type": "application/json",
+    };
+
+    const res = await axios.post("https://ui.coopedu.app.br/api/refresh-token", {}, {
+      headers,
+      timeout: 10000,
+    });
+
+    if (res.status !== 200 && res.status !== 204) {
+      throw new Error(`Endpoint de refresh do SIC retornou HTTP ${res.status}`);
+    }
+
+    // Tenta capturar o token renovado no Set-Cookie ou no body
+    let refreshedToken = "";
+    let refreshedCookieHeader = "";
+
+    const setCookieHeaders = res.headers["set-cookie"];
+    if (setCookieHeaders && Array.isArray(setCookieHeaders)) {
+      const authCookie = setCookieHeaders.find((c: string) => c.includes("coopedu-auth-prod="));
+      if (authCookie) {
+        refreshedCookieHeader = authCookie.split(";")[0];
+        const match = authCookie.match(/coopedu-auth-prod=([^;]+)/);
+        if (match) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(match[1]));
+            if (parsed.value) refreshedToken = parsed.value;
+          } catch {
+            refreshedToken = match[1];
+          }
+        }
+      }
+    }
+
+    if (!refreshedToken && res.data) {
+      if (typeof res.data === "string" && res.data.startsWith("eyJ")) {
+        refreshedToken = res.data;
+      } else if (res.data.token || res.data.rawToken) {
+        refreshedToken = res.data.token || res.data.rawToken;
+      }
+    }
+
+    // Se o backend Next.js apenas renovou a sessão interna, chama /api/decode-jwt com o cookie atualizado
+    if (!refreshedToken) {
+      try {
+        const decodeHeaders = {
+          ...headers,
+          ...(refreshedCookieHeader ? { Cookie: refreshedCookieHeader } : {}),
+        };
+        const decodeRes = await axios.get("https://ui.coopedu.app.br/api/decode-jwt", {
+          headers: decodeHeaders,
+          timeout: 8000,
+        });
+        if (decodeRes.data?.rawToken) {
+          refreshedToken = decodeRes.data.rawToken;
+        }
+      } catch (decodeErr: any) {
+        console.warn("[SIC Auto-Refresh] Aviso ao decodificar JWT após refresh:", decodeErr.message);
+      }
+    }
+
+    // Se não veio token novo mas a chamada HTTP 200 confirmou renovação, reutilizamos o token anterior com prazo estendido
+    if (!refreshedToken) {
+      refreshedToken = currentToken;
+    }
+
+    const saveResult = await saveSicSession(refreshedCookieHeader || refreshedToken);
+    console.log(`[SIC Auto-Refresh] ✅ Sessão do SIC renovada preventivamente com sucesso! Expira em: ${saveResult.expiresAt}`);
+
+    return {
+      success: true,
+      message: "Sessão renovada com sucesso!",
+      expiresAt: saveResult.expiresAt,
+    };
+  } catch (error: any) {
+    console.warn("[SIC Auto-Refresh] Falha ao renovar sessão:", error.response?.data || error.message);
+    return {
+      success: false,
+      message: error.message || "Falha ao renovar sessão do SIC.",
+    };
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+let autoRefreshTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Inicia o worker em segundo plano que renova a sessão periodicamente
+ */
+export function startSicAutoRefreshWorker() {
+  if (autoRefreshTimer) return;
+
+  console.log("[SIC Worker] 🕒 Worker de renovação preventiva da Sessão SIC ativado (intervalo: 10 min).");
+
+  autoRefreshTimer = setInterval(async () => {
+    try {
+      const status = await getSicSessionStatus();
+      // Se a sessão estiver ativa e faltar entre 1 e 35 minutos para expirar, renova!
+      if (status.active && status.remainingMinutes > 0 && status.remainingMinutes <= 35) {
+        console.log(`[SIC Worker] ⚡ Sessão SIC expira em ${status.remainingMinutes} min. Executando renovação automática preventiva...`);
+        await refreshSicSession();
+      }
+    } catch (err: any) {
+      console.warn("[SIC Worker] Erro no ciclo de verificação da sessão:", err.message);
+    }
+  }, 10 * 60 * 1000);
+}
+
 /**
  * Obtém a sessão autenticada do Atendimento no portal SIC com resolução multi-camadas
  */
@@ -239,7 +396,19 @@ export async function getAuthenticatedSicSession(): Promise<{ jwtToken: string; 
 
   // 1. Cache em memória ainda válido (com folga de 2 minutos)
   if (sessionCache && sessionCache.expiresAt > (now + 120000)) {
+    // Renovação preventiva silenciosa se faltar menos de 20 minutos
+    if (sessionCache.expiresAt < (now + 20 * 60 * 1000) && !isRefreshing) {
+      refreshSicSession().catch(() => {});
+    }
     return { jwtToken: sessionCache.jwtToken, cookieHeader: sessionCache.cookieHeader };
+  }
+
+  // Se o cache expirou ou está perto de expirar, tenta renovar via API oficial antes de desistir
+  if (sessionCache && sessionCache.jwtToken) {
+    const refreshResult = await refreshSicSession().catch(() => null);
+    if (refreshResult?.success && sessionCache && sessionCache.expiresAt > (now + 120000)) {
+      return { jwtToken: sessionCache.jwtToken, cookieHeader: sessionCache.cookieHeader };
+    }
   }
 
   // 2. Consulta no banco centralizador_sic_db.system_settings
@@ -255,6 +424,10 @@ export async function getAuthenticatedSicSession(): Promise<{ jwtToken: string; 
         if (norm && norm.expiresAt > (now + 60000)) {
           if (cookieRow?.setting_value) norm.cookieHeader = cookieRow.setting_value;
           sessionCache = norm;
+          // Renovação preventiva silenciosa
+          if (norm.expiresAt < (now + 20 * 60 * 1000) && !isRefreshing) {
+            refreshSicSession().catch(() => {});
+          }
           return { jwtToken: norm.jwtToken, cookieHeader: norm.cookieHeader };
         }
       }

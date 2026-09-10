@@ -18,6 +18,7 @@ import googleDriveDesligamentoRoutes from "./routes/googleDriveDesligamento";
 import easycoopRoutes from "./routes/easycoop";
 import sicSettingsRoutes from "./routes/sicSettings";
 import dossierRoutes from "./routes/dossier";
+import { startSicAutoRefreshWorker } from "./services/sicBrowserAutomation";
 
 dotenv.config();
 
@@ -114,6 +115,7 @@ app.use((req, res, next) => {
 if (process.env.VERCEL !== "1") {
   initDb()
     .then(() => {
+      startSicAutoRefreshWorker();
       app.listen(PORT, () => {
         console.log(`==================================================`);
         console.log(`🚀 Centralizador SIC Backend & Frontend rodando na porta ${PORT}`);

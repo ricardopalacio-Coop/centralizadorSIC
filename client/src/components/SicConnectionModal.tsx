@@ -11,6 +11,7 @@ import {
   Info,
   Copy,
 } from "lucide-react";
+import { SicBookmarkletSection } from "./SicBookmarkletSection";
 
 interface SicConnectionModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const fetchStatus = async () => {
@@ -124,6 +126,32 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/sic/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setMessage({ text: "Sessão renovada com sucesso via API oficial do SIC!", type: "success" });
+        await fetchStatus();
+        if (onSessionUpdated) onSessionUpdated();
+      } else {
+        setMessage({ text: data.error || data.message || "Falha ao renovar a sessão do SIC.", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Erro de conexão ao solicitar renovação de sessão.", type: "error" });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -171,15 +199,28 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing || loading}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition-all flex items-center space-x-1 shrink-0"
-            >
-              {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              <span>Testar</span>
-            </button>
+
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing || loading || !status?.active}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-40"
+                title="Renova o token JWT na API oficial do SIC"
+              >
+                {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                <span>Renovar Agora</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={testing || loading}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition-all flex items-center space-x-1"
+              >
+                {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                <span>Testar</span>
+              </button>
+            </div>
           </div>
 
           {/* Feedback */}
@@ -198,11 +239,14 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
             </div>
           )}
 
-          {/* Formulário para colar novo token */}
+          {/* Sincronização em 1 Clique (Zero F12) */}
+          <SicBookmarkletSection />
+
+          {/* Formulário para colar novo token manualmente (Fallback) */}
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Cole o Cookie ou Token do SIC:
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                Ou cole o Cookie / Token manualmente (Fallback):
               </label>
               <textarea
                 value={tokenInput}
