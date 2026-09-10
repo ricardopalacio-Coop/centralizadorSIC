@@ -17,6 +17,7 @@ import googleDriveRoutes from "./routes/googleDrive";
 import googleDriveDesligamentoRoutes from "./routes/googleDriveDesligamento";
 import easycoopRoutes from "./routes/easycoop";
 import sicSettingsRoutes from "./routes/sicSettings";
+import dossierRoutes from "./routes/dossier";
 
 dotenv.config();
 
@@ -78,6 +79,7 @@ app.use("/api/drive/desligamento", googleDriveDesligamentoRoutes);
 app.use("/api/drive", googleDriveRoutes);
 app.use("/api/easycoop", easycoopRoutes);
 app.use("/api/sic", sicSettingsRoutes);
+app.use("/api/dossie", dossierRoutes);
 
 // Rota de teste de saúde da API
 app.get("/api/health", (req, res) => {

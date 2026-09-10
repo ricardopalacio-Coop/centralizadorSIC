@@ -25,6 +25,7 @@ export type NavTabType =
   | "dashboard"
   | "easycoop-cooperado"
   | "easycoop-contrato"
+  | "dossier"
   | "cooperados"
   | "importacao"
   | "desligamento"
@@ -124,6 +125,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             >
               <UserCheck className="h-4 w-4 text-sky-600" />
               <span className="hidden sm:inline">Pesquisa Cooperado</span>
+            </button>
+
+            {/* 1.2 MENU DOSSIÊ DO COOPERADO */}
+            <button
+              onClick={() => {
+                setActiveTab("dossier");
+                setIsEasyCoopOpen(false);
+                setIsTermosAntigosOpen(false);
+                setIsTermosSicOpen(false);
+                setIsSetupOpen(false);
+              }}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "dossier"
+                  ? "bg-gradient-to-r from-sky-50 to-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm ring-1 ring-indigo-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <FolderArchive className={`h-4 w-4 ${activeTab === "dossier" ? "text-indigo-600" : "text-slate-500"}`} />
+              <span className="font-extrabold tracking-tight">Dossiê</span>
             </button>
 
             {/* MENU EASYCOOP (DROPDOWN COOPERADO OU CONTRATO) */}

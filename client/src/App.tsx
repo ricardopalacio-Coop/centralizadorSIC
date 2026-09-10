@@ -11,6 +11,7 @@ import { PlugSignPage } from "./pages/PlugSignPage";
 import { FichasCadastraisPage } from "./pages/FichasCadastraisPage";
 import { FichasDesligamentoPage } from "./pages/FichasDesligamentoPage";
 import { EasyCoopPage } from "./pages/EasyCoopPage";
+import { DossiePage } from "./pages/DossiePage";
 import { Navbar, NavTabType } from "./components/Navbar";
 import { Loader2 } from "lucide-react";
 
@@ -36,6 +37,7 @@ const MainContent: React.FC = () => {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 bg-slate-100">
         {activeTab === "dashboard" && <DashboardPage />}
+        {activeTab === "dossier" && <DossiePage />}
         {activeTab === "easycoop-cooperado" && <EasyCoopPage initialMode="cooperado" />}
         {activeTab === "easycoop-contrato" && <EasyCoopPage initialMode="contrato" />}
         {activeTab === "cooperados" && <CooperadosListPage />}
