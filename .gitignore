@@ -19,6 +19,9 @@ installer/Output/
 *.png
 *.jpg
 *.jpeg
+!client/public/*.png
+!client/public/*.jpg
+!client/public/*.jpeg
 *.traineddata
 
 # Environment & Secret Files

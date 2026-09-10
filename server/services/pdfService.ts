@@ -1,7 +1,31 @@
 import PDFDocument from "pdfkit";
 import path from "path";
 import fs from "fs";
-import { toUpperNoAccents, getEsocialCategoryInfo } from "./easycoopService";
+import {
+  toUpperNoAccents,
+  toUpperWithAccents,
+  sanitizeText,
+  fixMojibake,
+  getEsocialCategoryInfo,
+} from "./easycoopService";
+
+function resolveImagePath(filename: string): string {
+  const candidates = [
+    path.resolve(process.cwd(), "client/public", filename),
+    path.resolve(process.cwd(), "client/dist", filename),
+    path.resolve(__dirname, "../../client/public", filename),
+    path.resolve(__dirname, "../../client/dist", filename),
+    path.resolve(__dirname, "../client/public", filename),
+    path.resolve(__dirname, "../client/dist", filename),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return candidates[0];
+}
+
+const LOGO_COOPEDU_PATH = resolveImagePath("logo-coopedu-horizontal-azul.png");
+const LOGO_SIC_PATH = resolveImagePath("logo_sic.png");
 
 interface ReceiptData {
   cooperadoName: string;
@@ -62,23 +86,37 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
         .rect(40, 40, 515, 65)
         .fillAndStroke("#f0f9ff", "#bae6fd");
 
-      doc
-        .fillColor(primaryColor)
-        .fontSize(16)
-        .font("Helvetica-Bold")
-        .text("COOPEDU", 55, 50);
+      if (fs.existsSync(LOGO_COOPEDU_PATH)) {
+        try {
+          doc.image(LOGO_COOPEDU_PATH, 50, 47, { width: 100 });
+        } catch {
+          doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 50);
+        }
+      } else {
+        doc
+          .fillColor(primaryColor)
+          .fontSize(16)
+          .font("Helvetica-Bold")
+          .text("COOPEDU", 55, 50);
+      }
+
+      if (fs.existsSync(LOGO_SIC_PATH)) {
+        try {
+          doc.image(LOGO_SIC_PATH, 420, 50, { width: 110 });
+        } catch {}
+      }
 
       doc
         .fillColor(darkText)
-        .fontSize(9)
+        .fontSize(8.5)
         .font("Helvetica-Bold")
-        .text("COOPERATIVA DE TRABALHO DOS PROFISSIONAIS DA EDUCAÇÃO", 55, 68);
+        .text("COOPERATIVA DE TRABALHO DOS PROFISSIONAIS DA EDUCAÇÃO", 50, 75);
 
       doc
         .fillColor("#64748b")
-        .fontSize(8)
+        .fontSize(7.5)
         .font("Helvetica")
-        .text("CNPJ: 10.423.176/0001-20 | BR 116, Fortaleza - CE | Core Coopedu", 55, 82);
+        .text("CNPJ: 10.423.176/0001-20 | BR 116, Fortaleza - CE | Core Coopedu • SIC", 50, 87);
 
       // --- TÍTULO PRINCIPAL ---
       doc
@@ -313,9 +351,22 @@ export function generatePropostaAdesaoPdf(proposalData: any, cpf: string): Promi
 
       // Cabeçalho
       doc.rect(40, 40, 515, 60).fillAndStroke("#e0f2fe", "#7dd3fc");
-      doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
-      doc.fillColor(darkText).fontSize(10).font("Helvetica-Bold").text("PROPOSTA DE ADESÃO / ADMISSÃO DE COOPERADO", 55, 66);
-      doc.fillColor("#475569").fontSize(8).font("Helvetica").text("Centralizador SIC — Sistema Integrado de Cooperativas | Core Coopedu", 55, 80);
+      if (fs.existsSync(LOGO_COOPEDU_PATH)) {
+        try {
+          doc.image(LOGO_COOPEDU_PATH, 50, 46, { width: 95 });
+        } catch {
+          doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
+        }
+      } else {
+        doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
+      }
+      if (fs.existsSync(LOGO_SIC_PATH)) {
+        try {
+          doc.image(LOGO_SIC_PATH, 430, 48, { width: 105 });
+        } catch {}
+      }
+      doc.fillColor(darkText).fontSize(9.5).font("Helvetica-Bold").text("PROPOSTA DE ADESÃO / ADMISSÃO DE COOPERADO", 50, 68);
+      doc.fillColor("#475569").fontSize(7.5).font("Helvetica").text("Centralizador SIC — Sistema Integrado de Cooperativas | Core Coopedu", 50, 81);
 
       // Título
       doc.fillColor(darkText).fontSize(14).font("Helvetica-Bold").text("FICHA DE PROPOSTA DE ADMISSÃO", 40, 115, { align: "center" });
@@ -384,9 +435,22 @@ export function generateTermoDesligamentoPdf(terminationData: any, cpf: string):
 
       // Cabeçalho
       doc.rect(40, 40, 515, 60).fillAndStroke("#ffe4e6", "#f43f5e");
-      doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
-      doc.fillColor(darkText).fontSize(10).font("Helvetica-Bold").text("SOLICITAÇÃO / TERMO DE DESLIGAMENTO DE COOPERADO", 55, 66);
-      doc.fillColor("#475569").fontSize(8).font("Helvetica").text("Centralizador SIC — Sistema Integrado de Cooperativas | Core Coopedu", 55, 80);
+      if (fs.existsSync(LOGO_COOPEDU_PATH)) {
+        try {
+          doc.image(LOGO_COOPEDU_PATH, 50, 46, { width: 95 });
+        } catch {
+          doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
+        }
+      } else {
+        doc.fillColor(primaryColor).fontSize(16).font("Helvetica-Bold").text("COOPEDU", 55, 48);
+      }
+      if (fs.existsSync(LOGO_SIC_PATH)) {
+        try {
+          doc.image(LOGO_SIC_PATH, 430, 48, { width: 105 });
+        } catch {}
+      }
+      doc.fillColor(darkText).fontSize(9.5).font("Helvetica-Bold").text("SOLICITAÇÃO / TERMO DE DESLIGAMENTO DE COOPERADO", 50, 68);
+      doc.fillColor("#475569").fontSize(7.5).font("Helvetica").text("Centralizador SIC — Sistema Integrado de Cooperativas | Core Coopedu", 50, 81);
 
       // Título
       doc.fillColor(darkText).fontSize(14).font("Helvetica-Bold").text("TERMO DE RESCISÃO / DESLIGAMENTO VOLUNTÁRIO", 40, 115, { align: "center" });
@@ -439,11 +503,24 @@ export function generateDemonstrativePdf(summary: any): Promise<Buffer> {
       const borderGray = "#64748b";
 
       // 1. CABEÇALHO OFICIAL (Logo + Título)
-      doc.fillColor(primaryColor).fontSize(14).font("Helvetica-Bold").text("▲ coopedu", 40, 35);
-      doc.fontSize(7).font("Helvetica").text("COOPERATIVA DE TRABALHO", 40, 50);
+      if (fs.existsSync(LOGO_COOPEDU_PATH)) {
+        try {
+          doc.image(LOGO_COOPEDU_PATH, 40, 30, { width: 95 });
+        } catch {
+          doc.fillColor(primaryColor).fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 35);
+        }
+      } else {
+        doc.fillColor(primaryColor).fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 35);
+      }
+
+      if (fs.existsSync(LOGO_SIC_PATH)) {
+        try {
+          doc.image(LOGO_SIC_PATH, 145, 32, { width: 85 });
+        } catch {}
+      }
 
       // Título Principal
-      doc.fillColor(darkText).fontSize(14).font("Helvetica-Bold").text("Demonstrativo de Produtividade", 280, 38, { align: "right" });
+      doc.fillColor(darkText).fontSize(13).font("Helvetica-Bold").text("Demonstrativo de Produtividade", 250, 35, { align: "right" });
 
       // Subcabeçalho
       doc.fontSize(8).font("Helvetica-Bold").text("COOP TRAB PROF DA EDUCACAO DO ESTADO RIO G NORTE", 40, 66);
@@ -586,35 +663,44 @@ export function generateDemonstrativePdf(summary: any): Promise<Buffer> {
   });
 }
 
-const LOGO_PATH = path.resolve(process.cwd(), "client/public/logo-coopedu-horizontal-azul.png");
-
 function drawCoopeduHeader(doc: PDFKit.PDFDocument, title: string, subtitle?: string) {
-  if (fs.existsSync(LOGO_PATH)) {
+  // 1. Logo Coopedu à esquerda
+  if (fs.existsSync(LOGO_COOPEDU_PATH)) {
     try {
-      doc.image(LOGO_PATH, 40, 35, { width: 130 });
+      doc.image(LOGO_COOPEDU_PATH, 35, 30, { width: 105 });
     } catch {
-      doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 38);
+      doc.fillColor("#0284c7").fontSize(13).font("Helvetica-Bold").text("▲ COOPEDU", 35, 35);
     }
   } else {
-    doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 38);
+    doc.fillColor("#0284c7").fontSize(13).font("Helvetica-Bold").text("▲ COOPEDU", 35, 35);
   }
 
-  const normTitle = toUpperNoAccents(title);
-  const normSubtitle = subtitle ? toUpperNoAccents(subtitle) : undefined;
+  // Divisor vertical sutil entre marcas
+  doc.moveTo(148, 32).lineTo(148, 64).strokeColor("#cbd5e1").lineWidth(1).stroke();
 
-  doc.fillColor("#0f172a").fontSize(11).font("Helvetica-Bold").text(normTitle, 180, 38, { align: "right" });
+  // 2. Logo SIC ao lado
+  if (fs.existsSync(LOGO_SIC_PATH)) {
+    try {
+      doc.image(LOGO_SIC_PATH, 156, 32, { width: 90 });
+    } catch {
+      doc.fillColor("#1e293b").fontSize(13).font("Helvetica-Bold").text("SIC", 156, 35);
+    }
+  }
+
+  // 3. Títulos e metadados institucionais à direita (com acentuação e cedilhas preservadas)
+  const normTitle = toUpperWithAccents(title);
+  const normSubtitle = subtitle ? toUpperWithAccents(subtitle) : undefined;
+
+  doc.fillColor("#0f172a").fontSize(10).font("Helvetica-Bold").text(normTitle, 255, 30, { align: "right", width: 305 });
   if (normSubtitle) {
-    doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(normSubtitle, 180, 53, { align: "right" });
+    doc.fillColor("#64748b").fontSize(7.5).font("Helvetica").text(normSubtitle, 255, 45, { align: "right", width: 305 });
   }
 
-  doc.fillColor("#94a3b8").fontSize(7).font("Helvetica").text(
-    toUpperNoAccents(`EMISSAO: ${new Date().toLocaleDateString("pt-BR")} AS ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • CENTRALIZADOR SIC`),
-    180,
-    65,
-    { align: "right" }
-  );
+  const dateStr = `EMISSÃO: ${new Date().toLocaleDateString("pt-BR")} ÀS ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • CENTRALIZADOR SIC`;
+  doc.fillColor("#94a3b8").fontSize(6.8).font("Helvetica").text(dateStr, 255, 58, { align: "right", width: 305 });
 
-  doc.moveTo(40, 80).lineTo(555, 80).strokeColor("#cbd5e1").lineWidth(1.5).stroke();
+  // Linha divisória horizontal inferior
+  doc.moveTo(35, 74).lineTo(560, 74).strokeColor("#cbd5e1").lineWidth(1.2).stroke();
 }
 
 function formatCurrency(val?: number | string) {
@@ -1035,6 +1121,10 @@ export function generateEasycoopGraficoPdf(coop: any, financialData: any): Promi
 
 /**
  * 3. Gera PDF dos Lançamentos Selecionados no Período com Detalhes (EasyCoop)
+ * - Agrupamento: uma página dedicada para cada contrato
+ * - Remoção da coluna "Pago em"
+ * - Redesign estético executivo dos totais consolidados
+ * - Preservação total de acentos e cedilhas (ex: IPANGUAÇU)
  */
 export function generateEasycoopLancamentosPdf(coop: any, lancamentos: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -1050,130 +1140,247 @@ export function generateEasycoopLancamentosPdf(coop: any, lancamentos: any[]): P
       const darkText = "#0f172a";
       const grayBorder = "#cbd5e1";
 
-      drawCoopeduHeader(doc, "EXTRATO DE REPASSES E LANÇAMENTOS SELECIONADOS", "Detalhamento de Fechamentos Financeiros • Core Coopedu");
-
-      let y = 92;
-
-      // IDENTIFICAÇÃO DO COOPERADO E CONTRATOS (CABEÇALHO ENRIQUECIDO)
-      doc.rect(35, y, 525, 65).fillAndStroke("#f8fafc", "#e2e8f0");
-      doc.fillColor(darkText).fontSize(8);
-      
-      // Linha 1
-      doc.font("Helvetica-Bold").text("Cooperado:", 45, y + 8);
-      doc.font("Helvetica").text(String(coop.name || "N/I").toUpperCase(), 105, y + 8, { width: 240, ellipsis: true });
-
-      doc.font("Helvetica-Bold").text("CPF:", 355, y + 8);
-      doc.font("Helvetica").text(formatCpf(coop.document), 385, y + 8);
-
-      doc.font("Helvetica-Bold").text("Matrícula:", 470, y + 8);
-      doc.font("Helvetica").text(`#${coop.registration_number || "-"}`, 520, y + 8);
-
-      // Linha 2
-      const firstTomador = lancamentos[0]?.tomador || coop.contrato_atual?.tomador_nome || "TODOS";
-      const firstContrato = lancamentos[0]?.contrato_descricao || coop.contrato_atual?.contrato_descricao || "TODOS";
-
-      doc.font("Helvetica-Bold").text("Atividade/Cargo:", 45, y + 26);
-      doc.font("Helvetica-Bold").fillColor(primary).text(coop.cargo_contrato || coop.position || "Cooperado", 125, y + 26, { width: 170, ellipsis: true });
-      doc.fillColor(darkText);
-
-      doc.font("Helvetica-Bold").text("Cliente / Tomador:", 305, y + 26);
-      doc.font("Helvetica").text(firstTomador, 400, y + 26, { width: 150, ellipsis: true });
-
-      // Linha 3
+      const coopName = toUpperWithAccents(coop.name || "N/I");
+      const coopCargo = toUpperWithAccents(coop.cargo_contrato || coop.position || "Cooperado");
       const bank = resolveOwlBank(coop.bank_code, coop.bank_name);
-      doc.font("Helvetica-Bold").text("Contrato:", 45, y + 44);
-      doc.font("Helvetica").text(firstContrato, 95, y + 44, { width: 170, ellipsis: true });
+      const bankFullStr = `${toUpperWithAccents(bank.name)} (${bank.code}) • Ag: ${coop.agency || "0001"} • CC: ${coop.account_number || "-"}-${coop.account_digit || ""} (${coop.account_type || "Corrente"})`;
 
-      doc.font("Helvetica-Bold").text("Dados Bancários:", 275, y + 44);
-      const bankFullStr = `${bank.name} (${bank.code}) • Ag: ${coop.agency || "0001"} • CC: ${coop.account_number || "-"}-${coop.account_digit || ""} (${coop.account_type || "Corrente"})`;
-      doc.font("Helvetica-Bold").fillColor("#047857").text(bankFullStr, 365, y + 44, { width: 190, ellipsis: true });
-      doc.fillColor(darkText);
+      // 1. Sanitizar lançamentos e calcular totais gerais
+      let totGeralBruto = 0;
+      let totGeralInss = 0;
+      let totGeralIrrf = 0;
+      let totGeralTaxa = 0;
+      let totGeralLiquido = 0;
 
-      y += 72;
+      const safeLancamentos = (lancamentos || []).map((l: any) => {
+        const valorBruto = Number(l.valor_bruto || 0);
+        const inss = Number(l.inss || 0);
+        const irrf = Number(l.irrf || 0);
+        const taxaAdm = Number(l.taxa_adm || 0);
+        const valorLiquido = Number(l.valor_liquido || 0);
 
-      // CABEÇALHO DA TABELA (COLUNAS REDIMENSIONADAS: 40, 85, 100, 55, 50, 50, 45, 55, 45)
-      doc.rect(35, y, 525, 18).fillAndStroke("#e2e8f0", grayBorder);
-      doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
-      doc.text("Comp.", 35, y + 5, { width: 40, align: "center" });
-      doc.text("Cliente / Tomador", 75, y + 5, { width: 85 });
-      doc.text("Contrato Vinculado", 160, y + 5, { width: 100 });
-      doc.text("Bruto", 260, y + 5, { width: 55, align: "right" });
-      doc.text("INSS", 315, y + 5, { width: 50, align: "right" });
-      doc.text("IRRF", 365, y + 5, { width: 50, align: "right" });
-      doc.text("Taxa Adm", 415, y + 5, { width: 45, align: "right" });
-      doc.text("Líquido", 460, y + 5, { width: 55, align: "right" });
-      doc.text("Pago em", 515, y + 5, { width: 45, align: "center" });
+        totGeralBruto += valorBruto;
+        totGeralInss += inss;
+        totGeralIrrf += irrf;
+        totGeralTaxa += taxaAdm;
+        totGeralLiquido += valorLiquido;
 
-      y += 18;
+        return {
+          ...l,
+          tomador: toUpperWithAccents(l.tomador || "COOPEDU"),
+          contrato_descricao: toUpperWithAccents(l.contrato_descricao || l.tomador || "CONTRATO GERAL"),
+          valor_bruto: valorBruto,
+          inss,
+          irrf,
+          taxa_adm: taxaAdm,
+          valor_liquido: valorLiquido,
+        };
+      });
 
-      let totBruto = 0;
-      let totInss = 0;
-      let totIrrf = 0;
-      let totTaxa = 0;
-      let totLiquido = 0;
-
-      for (let i = 0; i < lancamentos.length; i++) {
-        const l = lancamentos[i];
-        totBruto += Number(l.valor_bruto || 0);
-        totInss += Number(l.inss || 0);
-        totIrrf += Number(l.irrf || 0);
-        totTaxa += Number(l.taxa_adm || 0);
-        totLiquido += Number(l.valor_liquido || 0);
-
-        // Quebra de página se necessário
-        if (y > 730) {
-          doc.addPage();
-          drawCoopeduHeader(doc, "EXTRATO DE REPASSES E LANÇAMENTOS (CONTINUAÇÃO)");
-          y = 90;
-          doc.rect(35, y, 525, 18).fillAndStroke("#e2e8f0", grayBorder);
-          doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
-          doc.text("Comp.", 35, y + 5, { width: 40, align: "center" });
-          doc.text("Cliente / Tomador", 75, y + 5, { width: 85 });
-          doc.text("Contrato Vinculado", 160, y + 5, { width: 100 });
-          doc.text("Bruto", 260, y + 5, { width: 55, align: "right" });
-          doc.text("INSS", 315, y + 5, { width: 50, align: "right" });
-          doc.text("IRRF", 365, y + 5, { width: 50, align: "right" });
-          doc.text("Taxa Adm", 415, y + 5, { width: 45, align: "right" });
-          doc.text("Líquido", 460, y + 5, { width: 55, align: "right" });
-          doc.text("Pago em", 515, y + 5, { width: 45, align: "center" });
-          y += 18;
+      // 2. Agrupar por CONTRATO (Uma página para cada contrato)
+      const gruposMap = new Map<string, { contratoNome: string; tomadorNome: string; itens: any[] }>();
+      for (const l of safeLancamentos) {
+        const chave = l.contrato_descricao || l.tomador || "CONTRATO GERAL";
+        if (!gruposMap.has(chave)) {
+          gruposMap.set(chave, {
+            contratoNome: chave,
+            tomadorNome: l.tomador || "COOPEDU",
+            itens: [],
+          });
         }
-
-        const isEven = i % 2 === 0;
-        doc.rect(35, y, 525, 14).fillAndStroke(isEven ? "#ffffff" : "#f8fafc", "#f1f5f9");
-        doc.fillColor(darkText).fontSize(6.5).font("Helvetica");
-
-        doc.text(`${String(l.mes).padStart(2, "0")}/${l.ano}`, 35, y + 3, { width: 40, align: "center" });
-        doc.text(l.tomador || "Coopedu", 75, y + 3, { width: 85, height: 9, ellipsis: true });
-        doc.text(l.contrato_descricao || l.tomador || "Contrato Geral", 160, y + 3, { width: 100, height: 9, ellipsis: true });
-        doc.text(formatCurrency(l.valor_bruto), 260, y + 3, { width: 55, align: "right" });
-        doc.text(formatCurrency(l.inss), 315, y + 3, { width: 50, align: "right" });
-        doc.text(formatCurrency(l.irrf), 365, y + 3, { width: 50, align: "right" });
-        doc.text(formatCurrency(l.taxa_adm), 415, y + 3, { width: 45, align: "right" });
-        doc.fillColor("#15803d").font("Helvetica-Bold").text(formatCurrency(l.valor_liquido), 460, y + 3, { width: 55, align: "right" });
-        doc.fillColor(darkText).font("Helvetica").text(formatSafeDate(l.data_pagamento), 515, y + 3, { width: 45, align: "center" });
-
-        y += 14;
+        gruposMap.get(chave)!.itens.push(l);
       }
 
-      // LINHA DE TOTAIS
-      y += 4;
-      doc.rect(35, y, 525, 20).fillAndStroke("#e0f2fe", "#7dd3fc");
-      doc.fillColor("#0369a1").fontSize(7.5).font("Helvetica-Bold");
-      doc.text(`TOTAIS CONSOLIDADOS (${lancamentos.length} LANÇAMENTOS SELECIONADOS)`, 40, y + 6, { width: 215 });
-      doc.text(formatCurrency(totBruto), 260, y + 6, { width: 55, align: "right" });
-      doc.text(formatCurrency(totInss), 315, y + 6, { width: 50, align: "right" });
-      doc.text(formatCurrency(totIrrf), 365, y + 6, { width: 50, align: "right" });
-      doc.text(formatCurrency(totTaxa), 415, y + 6, { width: 45, align: "right" });
-      doc.fillColor("#15803d").text(formatCurrency(totLiquido), 460, y + 6, { width: 55, align: "right" });
+      const grupos = Array.from(gruposMap.values());
 
-      // Rodapé
-      doc.fillColor("#94a3b8").fontSize(6.5).font("Helvetica").text(
-        "Extrato oficial emitido via Centralizador SIC • Core Coopedu. Todos os dados possuem validade institucional.",
-        40,
-        780,
-        { align: "center", width: 515 }
-      );
+      if (grupos.length === 0) {
+        drawCoopeduHeader(doc, "EXTRATO DE REPASSES E LANÇAMENTOS SELECIONADOS");
+        doc.fillColor(darkText).fontSize(10).font("Helvetica").text("Nenhum lançamento selecionado para exibição.", 40, 120);
+        doc.end();
+        return;
+      }
+
+      for (let gIdx = 0; gIdx < grupos.length; gIdx++) {
+        const g = grupos[gIdx];
+        if (gIdx > 0) doc.addPage();
+
+        drawCoopeduHeader(
+          doc,
+          "EXTRATO DE REPASSES E LANÇAMENTOS SELECIONADOS",
+          `Detalhamento Financeiro • ${g.contratoNome}`
+        );
+
+        let y = 84;
+
+        // IDENTIFICAÇÃO DO COOPERADO E CONTRATO DESTA PÁGINA
+        doc.rect(35, y, 525, 58).fillAndStroke("#f8fafc", "#e2e8f0");
+        doc.fillColor(darkText).fontSize(7.5);
+
+        // Linha 1
+        doc.font("Helvetica-Bold").text("Cooperado:", 45, y + 7);
+        doc.font("Helvetica").text(coopName, 100, y + 7, { width: 240, ellipsis: true });
+
+        doc.font("Helvetica-Bold").text("CPF:", 355, y + 7);
+        doc.font("Helvetica").text(formatCpf(coop.document), 385, y + 7);
+
+        doc.font("Helvetica-Bold").text("Matrícula:", 470, y + 7);
+        doc.font("Helvetica").text(`#${coop.registration_number || "-"}`, 515, y + 7);
+
+        // Linha 2
+        doc.font("Helvetica-Bold").text("Atividade/Cargo:", 45, y + 23);
+        doc.font("Helvetica-Bold").fillColor(primary).text(coopCargo, 125, y + 23, { width: 170, ellipsis: true });
+        doc.fillColor(darkText);
+
+        doc.font("Helvetica-Bold").text("Cliente / Tomador:", 305, y + 23);
+        doc.font("Helvetica").text(g.tomadorNome, 400, y + 23, { width: 155, ellipsis: true });
+
+        // Linha 3
+        doc.font("Helvetica-Bold").text("Contrato Vinculado:", 45, y + 39);
+        doc.font("Helvetica").text(g.contratoNome, 140, y + 39, { width: 150, ellipsis: true });
+
+        doc.font("Helvetica-Bold").text("Dados Bancários:", 305, y + 39);
+        doc.font("Helvetica-Bold").fillColor("#047857").text(bankFullStr, 390, y + 39, { width: 165, ellipsis: true });
+        doc.fillColor(darkText);
+
+        y += 66;
+
+        // CABEÇALHO DA TABELA (SEM "PAGO EM")
+        // Colunas (525 total): Comp.(42), Cliente(105), Contrato(118), Bruto(55), INSS(50), IRRF(50), Taxa Adm(48), Líquido(57)
+        doc.rect(35, y, 525, 18).fillAndStroke("#e2e8f0", grayBorder);
+        doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
+
+        doc.text("Comp.", 35, y + 5, { width: 42, align: "center" });
+        doc.text("Cliente / Tomador", 77, y + 5, { width: 105 });
+        doc.text("Contrato Vinculado", 182, y + 5, { width: 118 });
+        doc.text("Bruto", 300, y + 5, { width: 55, align: "right" });
+        doc.text("INSS", 355, y + 5, { width: 50, align: "right" });
+        doc.text("IRRF", 405, y + 5, { width: 50, align: "right" });
+        doc.text("Taxa Adm", 455, y + 5, { width: 48, align: "right" });
+        doc.text("Líquido", 503, y + 5, { width: 57, align: "right" });
+
+        y += 18;
+
+        let subBruto = 0;
+        let subInss = 0;
+        let subIrrf = 0;
+        let subTaxa = 0;
+        let subLiquido = 0;
+
+        for (let i = 0; i < g.itens.length; i++) {
+          const l = g.itens[i];
+          subBruto += l.valor_bruto;
+          subInss += l.inss;
+          subIrrf += l.irrf;
+          subTaxa += l.taxa_adm;
+          subLiquido += l.valor_liquido;
+
+          // Quebra de página para o mesmo contrato se exceder a altura útil
+          if (y > 670) {
+            doc.addPage();
+            drawCoopeduHeader(doc, "EXTRATO DE REPASSES E LANÇAMENTOS (CONTINUAÇÃO)", `Contrato: ${g.contratoNome}`);
+            y = 86;
+            doc.rect(35, y, 525, 18).fillAndStroke("#e2e8f0", grayBorder);
+            doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
+            doc.text("Comp.", 35, y + 5, { width: 42, align: "center" });
+            doc.text("Cliente / Tomador", 77, y + 5, { width: 105 });
+            doc.text("Contrato Vinculado", 182, y + 5, { width: 118 });
+            doc.text("Bruto", 300, y + 5, { width: 55, align: "right" });
+            doc.text("INSS", 355, y + 5, { width: 50, align: "right" });
+            doc.text("IRRF", 405, y + 5, { width: 50, align: "right" });
+            doc.text("Taxa Adm", 455, y + 5, { width: 48, align: "right" });
+            doc.text("Líquido", 503, y + 5, { width: 57, align: "right" });
+            y += 18;
+          }
+
+          const isEven = i % 2 === 0;
+          doc.rect(35, y, 525, 15).fillAndStroke(isEven ? "#ffffff" : "#f8fafc", "#f1f5f9");
+          doc.fillColor(darkText).fontSize(6.8).font("Helvetica");
+
+          doc.text(`${String(l.mes).padStart(2, "0")}/${l.ano}`, 35, y + 4, { width: 42, align: "center" });
+          doc.text(l.tomador, 77, y + 4, { width: 105, height: 9, ellipsis: true });
+          doc.text(l.contrato_descricao, 182, y + 4, { width: 118, height: 9, ellipsis: true });
+          doc.text(formatCurrency(l.valor_bruto), 300, y + 4, { width: 55, align: "right" });
+          doc.text(formatCurrency(l.inss), 355, y + 4, { width: 50, align: "right" });
+          doc.text(formatCurrency(l.irrf), 405, y + 4, { width: 50, align: "right" });
+          doc.text(formatCurrency(l.taxa_adm), 455, y + 4, { width: 48, align: "right" });
+          doc.fillColor("#15803d").font("Helvetica-Bold").text(formatCurrency(l.valor_liquido), 503, y + 4, { width: 57, align: "right" });
+
+          y += 15;
+        }
+
+        // LINHA DE SUBTOTAL DA TABELA DO CONTRATO
+        y += 2;
+        doc.rect(35, y, 525, 19).fillAndStroke("#f1f5f9", grayBorder);
+        doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
+        doc.text(`SUBTOTAL DO CONTRATO (${g.itens.length} ${g.itens.length === 1 ? "LANÇAMENTO" : "LANÇAMENTOS"})`, 42, y + 6, { width: 250 });
+        doc.text(formatCurrency(subBruto), 300, y + 6, { width: 55, align: "right" });
+        doc.text(formatCurrency(subInss), 355, y + 6, { width: 50, align: "right" });
+        doc.text(formatCurrency(subIrrf), 405, y + 6, { width: 50, align: "right" });
+        doc.text(formatCurrency(subTaxa), 455, y + 6, { width: 48, align: "right" });
+        doc.fillColor("#15803d").text(formatCurrency(subLiquido), 503, y + 6, { width: 57, align: "right" });
+
+        y += 26;
+
+        // CARD RESUMO EXECUTIVO DO CONTRATO
+        const cardY = y;
+        doc.rect(35, cardY, 525, 66).fillAndStroke("#ffffff", "#e2e8f0");
+        doc.rect(35, cardY, 525, 19).fillAndStroke("#f8fafc", "#e2e8f0");
+        doc.fillColor("#0369a1").fontSize(7.5).font("Helvetica-Bold").text(`RESUMO CONSOLIDADO DO CONTRATO • ${g.contratoNome}`, 45, cardY + 5);
+
+        doc.rect(45, cardY + 24, 155, 34).fillAndStroke("#f8fafc", "#e2e8f0");
+        doc.fillColor("#64748b").fontSize(6.5).font("Helvetica-Bold").text("TOTAL BRUTO", 53, cardY + 28);
+        doc.fillColor(darkText).fontSize(10.5).font("Helvetica-Bold").text(formatCurrency(subBruto), 53, cardY + 40);
+
+        doc.rect(210, cardY + 24, 160, 34).fillAndStroke("#fef2f2", "#fee2e2");
+        doc.fillColor("#991b1b").fontSize(6.5).font("Helvetica-Bold").text("RETENÇÕES (INSS + IRRF + TAXA)", 218, cardY + 28);
+        doc.fillColor("#b91c1c").fontSize(10.5).font("Helvetica-Bold").text(`- ${formatCurrency(subInss + subIrrf + subTaxa)}`, 218, cardY + 40);
+
+        doc.rect(380, cardY + 24, 170, 34).fillAndStroke("#f0fdf4", "#bbf7d0");
+        doc.fillColor("#166534").fontSize(6.5).font("Helvetica-Bold").text("TOTAL LÍQUIDO REPASSADO", 388, cardY + 28);
+        doc.fillColor("#15803d").fontSize(11).font("Helvetica-Bold").text(formatCurrency(subLiquido), 388, cardY + 40);
+
+        y = cardY + 74;
+
+        // Se for a ÚLTIMA página e existirem múltiplos contratos selecionados, renderizar o BLOCO GERAL CONSOLIDADO
+        if (gIdx === grupos.length - 1 && grupos.length > 1) {
+          if (y > 660) {
+            doc.addPage();
+            drawCoopeduHeader(doc, "EXTRATO DE REPASSES E LANÇAMENTOS SELECIONADOS", "Consolidação Geral dos Contratos");
+            y = 90;
+          } else {
+            y += 10;
+          }
+
+          const boxGeralY = y;
+          doc.rect(35, boxGeralY, 525, 78).fillAndStroke("#f0f9ff", "#7dd3fc");
+          doc.rect(35, boxGeralY, 525, 20).fillAndStroke("#e0f2fe", "#7dd3fc");
+          doc.fillColor("#0284c7").fontSize(8).font("Helvetica-Bold").text(
+            `TOTAL GERAL CONSOLIDADO DE TODOS OS CONTRATOS (${safeLancamentos.length} LANÇAMENTOS • ${grupos.length} CONTRATOS)`,
+            45,
+            boxGeralY + 6
+          );
+
+          doc.rect(45, boxGeralY + 26, 155, 42).fillAndStroke("#ffffff", "#bae6fd");
+          doc.fillColor("#475569").fontSize(7).font("Helvetica-Bold").text("TOTAL BRUTO GERAL", 53, boxGeralY + 32);
+          doc.fillColor(darkText).fontSize(11).font("Helvetica-Bold").text(formatCurrency(totGeralBruto), 53, boxGeralY + 46);
+
+          doc.rect(210, boxGeralY + 26, 160, 42).fillAndStroke("#ffffff", "#fecaca");
+          doc.fillColor("#991b1b").fontSize(7).font("Helvetica-Bold").text("RETENÇÕES TOTAIS (INSS/IRRF/TAXA)", 218, boxGeralY + 32);
+          doc.fillColor("#b91c1c").fontSize(11).font("Helvetica-Bold").text(`- ${formatCurrency(totGeralInss + totGeralIrrf + totGeralTaxa)}`, 218, boxGeralY + 46);
+
+          doc.rect(380, boxGeralY + 26, 170, 42).fillAndStroke("#ffffff", "#86efac");
+          doc.fillColor("#166534").fontSize(7).font("Helvetica-Bold").text("TOTAL LÍQUIDO GERAL CONSOLIDADO", 388, boxGeralY + 32);
+          doc.fillColor("#15803d").fontSize(12).font("Helvetica-Bold").text(formatCurrency(totGeralLiquido), 388, boxGeralY + 46);
+        }
+
+        // Rodapé da página
+        doc.fillColor("#94a3b8").fontSize(6.5).font("Helvetica").text(
+          "Extrato oficial emitido via Centralizador SIC • Core Coopedu. Todos os dados possuem validade institucional.",
+          35,
+          785,
+          { align: "center", width: 525 }
+        );
+      }
 
       doc.end();
     } catch (err) {

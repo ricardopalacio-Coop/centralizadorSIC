@@ -99,23 +99,71 @@ function calcularTempoCooperativa(dtAdmissao?: string | null, dtDesligamento?: s
   }
 }
 
+// Tabela de reversão de caracteres CP1252 (0x80 - 0x9F) mapeados indevidamente em UTF-8
+const cp1252ReverseMap: Record<number, number> = {
+  0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87,
+  0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a, 0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e,
+  0x2018: 0x91, 0x2019: 0x92, 0x201c: 0x93, 0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+  0x02dc: 0x98, 0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b, 0x0153: 0x9c, 0x017e: 0x9e, 0x0178: 0x9f,
+};
+
 /**
- * Utilitário global para normalização de texto:
- * 1. Corrige mojibake
- * 2. Remove acentos e caracteres diacríticos
- * 3. Converte para CAIXA ALTA (UPPERCASE)
+ * Corrige mojibake decorrente de encoding duplo (UTF-8 interpretado como CP1252/Latin-1)
+ * Preserva acentos, cedilhas e caracteres especiais originais em português
+ */
+export function fixMojibake(val: any): string {
+  if (val === null || val === undefined) return "";
+  let s = String(val).trim();
+  if (!s) return "";
+
+  // Se contém caracteres típicos de mojibake (como Ã seguido de outro caractere ou double dagger ‡)
+  if (/[ÃÂÁÉÍÓÚ]/i.test(s) || s.includes("‡")) {
+    try {
+      const bytes: number[] = [];
+      let isConvertible = true;
+      for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i);
+        if (cp1252ReverseMap[code] !== undefined) {
+          bytes.push(cp1252ReverseMap[code]);
+        } else if (code <= 0xff) {
+          bytes.push(code);
+        } else {
+          isConvertible = false;
+          break;
+        }
+      }
+      if (isConvertible && bytes.length > 0) {
+        const decoded = Buffer.from(bytes).toString("utf8");
+        if (!decoded.includes("\ufffd") && decoded.length <= s.length) {
+          s = decoded;
+        }
+      }
+    } catch {}
+  }
+
+  return s;
+}
+
+/**
+ * Sanitiza texto removendo espaços extras e corrigindo mojibake, PRESERVANDO acentos e cedilhas
+ */
+export function sanitizeText(val: any): string {
+  return fixMojibake(val).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Converte para CAIXA ALTA preservando acentuação e cedilhas corretas (ex: "IPANGUAÇU", "EDUCAÇÃO")
+ */
+export function toUpperWithAccents(val: any): string {
+  return sanitizeText(val).toUpperCase();
+}
+
+/**
+ * Utilitário para normalização de texto sem acentos (quando explicitamente exigido por sistemas legados)
  */
 export function toUpperNoAccents(str: any): string {
   if (str === null || str === undefined) return "";
-  let s = String(str);
-  try {
-    if (/[ÃÂÁÉÍÓÚ]/i.test(s)) {
-      const decoded = Buffer.from(s, "latin1").toString("utf8");
-      if (!decoded.includes("\ufffd") && decoded.length < s.length) {
-        s = decoded;
-      }
-    }
-  } catch {}
+  const s = fixMojibake(str);
   return s
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -224,11 +272,11 @@ export async function getEasycoopCooperadoFull(cpf: string) {
 
   // 5. Garantir que descanso, sobras e coordenação não sobreponham cargos operacionais
   alocacoes.forEach((a: any) => {
-    a.tomador_nome = toUpperNoAccents(a.tomador_nome);
+    a.tomador_nome = toUpperWithAccents(a.tomador_nome);
     if (a.contrato_descricao && /SOBRA/i.test(a.contrato_descricao)) {
-      a.contrato_descricao = "DISTRIBUICAO DE SOBRAS";
+      a.contrato_descricao = "DISTRIBUIÇÃO DE SOBRAS";
     } else if (a.contrato_descricao) {
-      a.contrato_descricao = toUpperNoAccents(a.contrato_descricao);
+      a.contrato_descricao = toUpperWithAccents(a.contrato_descricao);
     }
     const isAuxiliar =
       a.contrato_descricao?.includes("DESCANSO") ||
@@ -238,7 +286,7 @@ export async function getEasycoopCooperadoFull(cpf: string) {
       a.cargo = null;
       a.cbo = null;
     } else if (a.cargo) {
-      a.cargo = toUpperNoAccents(a.cargo);
+      a.cargo = toUpperWithAccents(a.cargo);
     }
   });
 
@@ -326,22 +374,22 @@ export async function getEasycoopCooperadoFull(cpf: string) {
 
   return {
     ...base,
-    name: toUpperNoAccents(base.name),
-    mother_name: toUpperNoAccents(base.mother_name),
-    father_name: toUpperNoAccents(base.father_name),
-    street: toUpperNoAccents(base.street),
-    neighborhood: toUpperNoAccents(base.neighborhood),
-    city: toUpperNoAccents(base.city),
-    state: toUpperNoAccents(base.state),
-    contract_name: toUpperNoAccents(contratoAtivo?.tomador_nome || base.contract_name),
+    name: toUpperWithAccents(base.name),
+    mother_name: toUpperWithAccents(base.mother_name),
+    father_name: toUpperWithAccents(base.father_name),
+    street: toUpperWithAccents(base.street),
+    neighborhood: toUpperWithAccents(base.neighborhood),
+    city: toUpperWithAccents(base.city),
+    state: toUpperWithAccents(base.state),
+    contract_name: toUpperWithAccents(contratoAtivo?.tomador_nome || base.contract_name),
     bank_code: bankCode,
-    bank_name: toUpperNoAccents(bankName),
+    bank_name: toUpperWithAccents(bankName),
     gender: base.gender || "M",
     position: officialPosition,
-    position_cadastral: toUpperNoAccents(base.position_cadastral || null),
+    position_cadastral: toUpperWithAccents(base.position_cadastral || null),
     secondary_phone: telefoneConsolidado,
     tempo_cooperativa_dias: tempoVida.dias,
-    tempo_cooperativa_formatado: toUpperNoAccents(tempoVida.formatado),
+    tempo_cooperativa_formatado: sanitizeText(tempoVida.formatado),
     contrato_atual: contratoAtivo,
     cargo_contrato: officialPosition,
     categoria_esocial: getEsocialCategoryInfo(base.cod_cat_trab_esocial),
@@ -355,7 +403,7 @@ export async function getEasycoopCooperadoFull(cpf: string) {
     },
     detalhes_erp: {
       RG: base.rg_number || null,
-      ORGEMISSOR: toUpperNoAccents(base.rg_issuer || null),
+      ORGEMISSOR: toUpperWithAccents(base.rg_issuer || null),
       SEXO: base.gender || "M",
       PIS: base.pis_number || null,
       CTPS: base.ctps_number || null,
@@ -557,6 +605,8 @@ export async function getEasycoopFinancialHistory(
     let totalTaxaAdm = 0;
 
     for (const f of fechamentos) {
+      f.tomador = toUpperWithAccents(f.tomador || "COOPEDU");
+      f.contrato_descricao = toUpperWithAccents(f.contrato_descricao || f.tomador || "CONTRATO GERAL");
       totalBruto += Number(f.valor_bruto || 0);
       totalLiquido += Number(f.valor_liquido || 0);
       totalInss += Number(f.inss || 0);
@@ -567,8 +617,8 @@ export async function getEasycoopFinancialHistory(
     return {
       fechamentos,
       anos: anosRows.map((a: any) => a.ano),
-      tomadores: tomadoresRows.map((t: any) => t.tomador),
-      contratos: contratosRows.map((c: any) => c.nome),
+      tomadores: tomadoresRows.map((t: any) => toUpperWithAccents(t.tomador)).filter(Boolean),
+      contratos: contratosRows.map((c: any) => toUpperWithAccents(c.nome)).filter(Boolean),
       totais: {
         totalBruto,
         totalLiquido,
