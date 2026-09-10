@@ -33,9 +33,26 @@ import {
   Printer,
   CheckSquare,
   Square,
+  FileCheck2,
 } from 'lucide-react';
 import { PdfViewerModal } from './PdfViewerModal';
 import { FolhaLoteModal } from './FolhaLoteModal';
+
+export function toUpperNoAccents(str: any): string {
+  if (str === null || str === undefined) return '';
+  let s = String(str);
+  try {
+    if (/[\u00c0-\u00ff]/.test(s)) {
+      const dec = decodeURIComponent(escape(s));
+      if (dec.length < s.length) s = dec;
+    }
+  } catch {}
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+}
 
 export interface EasyCoopCooperadoDossierProps {
   selectedCpf: string;
@@ -455,89 +472,89 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       )}
 
       {/* Barra de Abas do Cooperado */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-1.5">
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-1.5 uppercase font-bold text-xs">
         <button
           onClick={() => setActiveCoopTab('cadastral')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'cadastral'
               ? 'bg-sky-50 text-sky-700 border border-sky-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <UserCheck className="h-4 w-4 text-sky-600" />
-          <span>Ficha Cadastral</span>
+          <span>FICHA CADASTRAL</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('financeiro')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'financeiro'
               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <DollarSign className="h-4 w-4 text-emerald-600" />
-          <span>Financeiro / Repasses</span>
+          <span>FINANCEIRO / REPASSES</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('folha')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'folha'
               ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <Receipt className="h-4 w-4 text-indigo-600" />
-          <span>Folha de Pagamento</span>
+          <span>FOLHA DE PAGAMENTO</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('esocial')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'esocial'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <ShieldCheck className="h-4 w-4 text-blue-600" />
-          <span>e-Social ({esocialData?.metricas?.totalTransmissoes || '...'})</span>
+          <span>E-SOCIAL ({esocialData?.metricas?.totalTransmissoes || '...'})</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('alocacoes')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'alocacoes'
               ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <Building2 className="h-4 w-4 text-amber-600" />
-          <span>Alocações ({coopFullData.alocacoes?.length || 0})</span>
+          <span>ALOCACOES ({coopFullData.alocacoes?.length || 0})</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('dependentes')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'dependentes'
               ? 'bg-purple-50 text-purple-700 border border-purple-200 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
           <Users className="h-4 w-4 text-purple-600" />
-          <span>Dependentes ({coopFullData.dependentes?.length || 0})</span>
+          <span>DEPENDENTES ({coopFullData.dependentes?.length || 0})</span>
         </button>
 
         <button
           onClick={() => setActiveCoopTab('documentos')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
             activeCoopTab === 'documentos'
-              ? 'bg-slate-100 text-slate-800 border border-slate-300 shadow-sm'
+              ? 'bg-slate-900 text-white border border-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
-          <FileText className="h-4 w-4 text-slate-600" />
-          <span>Termos Assinados</span>
+          <FileText className="h-4 w-4 text-sky-400" />
+          <span>TERMOS ASSINADOS</span>
         </button>
       </div>
 
@@ -553,42 +570,42 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-black tracking-wider text-sky-700 block">
-                      Contrato e Tomador Atual
+                      CONTRATO E TOMADOR ATUAL
                     </span>
-                    <h3 className="text-lg font-black text-slate-900">
-                      {coopFullData.contrato_atual.tomador_nome}
+                    <h3 className="text-lg font-black text-slate-900 uppercase">
+                      {toUpperNoAccents(coopFullData.contrato_atual.tomador_nome || coopFullData.contract_name || 'COOPEDU')}
                     </h3>
-                    <span className="text-xs text-slate-500 font-medium">
-                      {coopFullData.contrato_atual.contrato_descricao || 'Contrato Operacional'} • Doc nº{' '}
+                    <span className="text-xs text-slate-500 font-bold uppercase">
+                      {toUpperNoAccents(coopFullData.contrato_atual.contrato_descricao || 'CONTRATO OPERACIONAL')} • DOC Nº{' '}
                       {coopFullData.contrato_atual.contrato_numero || coopFullData.contrato_atual.contrato_id}
                     </span>
                   </div>
                 </div>
 
-                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  Status: {coopFullData.contrato_atual.status_alocacao || 'Ativo'}
+                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                  STATUS: {toUpperNoAccents(coopFullData.contrato_atual.status_alocacao || 'ATIVO')}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-sky-100 text-xs">
                 <div>
-                  <span className="text-slate-400 block font-medium">Atividade no Contrato</span>
-                  <span className="font-extrabold text-slate-800">
+                  <span className="text-slate-400 block font-bold uppercase">ATIVIDADE NO CONTRATO</span>
+                  <span className="font-extrabold text-slate-800 uppercase">
                     {isDescansoOuSobras(coopFullData.contrato_atual.contrato_descricao)
-                      ? 'Não se aplica'
-                      : coopFullData.cargo_contrato || '-'}
+                      ? 'NAO SE APLICA'
+                      : toUpperNoAccents(coopFullData.cargo_contrato || coopFullData.position || '-')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-medium">Carga Horária</span>
-                  <span className="font-extrabold text-slate-800">
-                    {coopFullData.contrato_atual.horas || '40h semanais'}
+                  <span className="text-slate-400 block font-bold uppercase">CARGA HORARIA</span>
+                  <span className="font-extrabold text-slate-800 uppercase">
+                    {toUpperNoAccents(coopFullData.contrato_atual.horas || '40H SEMANAIS')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-medium">Vigência da Alocação</span>
-                  <span className="font-extrabold text-slate-800">
-                    {formatDate(coopFullData.contrato_atual.data_inicio)} até{' '}
+                  <span className="text-slate-400 block font-bold uppercase">VIGENCIA DA ALOCACAO</span>
+                  <span className="font-extrabold text-slate-800 uppercase">
+                    {formatDate(coopFullData.contrato_atual.data_inicio)} ATE{' '}
                     {formatDate(coopFullData.contrato_atual.data_fim)}
                   </span>
                 </div>
@@ -600,46 +617,46 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Award className="h-4 w-4 text-amber-600" />
-                <span>Vínculo Cooperativo & Capital Social</span>
+                <span className="uppercase">VINCULO COOPERATIVO & CAPITAL SOCIAL</span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-400 font-medium block">Data de Admissão</span>
+                  <span className="text-slate-400 font-bold uppercase block">DATA DE ADMISSAO</span>
                   <span className="font-extrabold text-slate-900 text-sm">
                     {formatDate(coopFullData.admission_date)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Data de Desligamento</span>
-                  <span className="font-extrabold text-slate-900 text-sm">
-                    {coopFullData.termination_date ? formatDate(coopFullData.termination_date) : 'Vínculo Ativo'}
+                  <span className="text-slate-400 font-bold uppercase block">DATA DE DESLIGAMENTO</span>
+                  <span className="font-extrabold text-slate-900 text-sm uppercase">
+                    {coopFullData.termination_date ? formatDate(coopFullData.termination_date) : 'VINCULO ATIVO'}
                   </span>
                 </div>
                 <div className="col-span-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <span className="text-slate-400 font-medium block text-[11px]">
-                    Tempo Total na Cooperativa
+                  <span className="text-slate-400 font-bold uppercase block text-[11px]">
+                    TEMPO TOTAL NA COOPERATIVA
                   </span>
-                  <span className="font-black text-sky-700 text-sm block mt-0.5">
-                    {coopFullData.tempo_cooperativa_formatado}
+                  <span className="font-black text-sky-700 text-sm block mt-0.5 uppercase">
+                    {toUpperNoAccents(coopFullData.tempo_cooperativa_formatado)}
                   </span>
                 </div>
                 <div className="col-span-2 bg-amber-50/70 p-3 rounded-2xl border border-amber-200/80">
-                  <span className="text-amber-800 font-bold block text-[11px]">
-                    Quotas-Parte do Capital Social
+                  <span className="text-amber-800 font-black block text-[11px] uppercase">
+                    QUOTAS-PARTE DO CAPITAL SOCIAL
                   </span>
-                  <span className="font-black text-slate-900 text-sm block mt-0.5">
-                    {coopFullData.quotas_info?.texto || '0 de 10 Quotas (R$ 0,00)'}
+                  <span className="font-black text-slate-900 text-sm block mt-0.5 uppercase">
+                    {toUpperNoAccents(coopFullData.quotas_info?.texto || '0 DE 10 QUOTAS (R$ 0,00)')}
                   </span>
-                  <span className="text-[10px] text-slate-500 block mt-0.5">
-                    Status: {coopFullData.quotas_info?.concluida ? 'Capital Totalmente Integralizado' : 'Em Integralização'}
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block mt-0.5">
+                    STATUS: {coopFullData.quotas_info?.concluida ? 'CAPITAL TOTALMENTE INTEGRALIZADO' : 'EM INTEGRALIZACAO'}
                   </span>
                 </div>
                 <div className="col-span-2 pt-2 border-t border-slate-100 flex flex-col gap-1">
-                  <span className="text-slate-400 font-medium text-[11px] block">
-                    Atividade Oficial (Contrato Vigente):
+                  <span className="text-slate-400 font-bold text-[11px] uppercase block">
+                    ATIVIDADE OFICIAL (CONTRATO VIGENTE):
                   </span>
-                  <span className="font-black text-slate-900 text-sm block">
-                    {coopFullData.position || coopFullData.cargo_contrato || 'Cooperado'}
+                  <span className="font-black text-slate-900 text-sm block uppercase">
+                    {toUpperNoAccents(coopFullData.position || coopFullData.cargo_contrato || 'COOPERADO')}
                   </span>
                 </div>
               </div>
@@ -648,52 +665,76 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <UserCheck className="h-4 w-4 text-sky-600" />
-                <span>Identificação Civil & Pessoal</span>
+                <span className="uppercase">IDENTIFICACAO CIVIL & PESSOAL</span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="col-span-2 bg-sky-50/70 p-3 rounded-2xl border border-sky-200/80 flex items-center justify-between">
+                  <div>
+                    <span className="text-sky-800 font-black block text-[10px] uppercase">
+                      CPF DO COOPERADO
+                    </span>
+                    <span className="font-mono font-black text-slate-900 text-base">
+                      {formatCpf(coopFullData.document)}
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-sky-200/80 text-sky-900 uppercase">
+                    DOCUMENTO OFICIAL
+                  </span>
+                </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Data de Nascimento</span>
+                  <span className="text-slate-400 font-bold uppercase block">DATA DE NASCIMENTO</span>
                   <span className="font-bold text-slate-800">
                     {formatDate(coopFullData.birth_date)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Sexo</span>
-                  <span className="font-bold text-slate-800">
-                    {getGenderLabel(coopFullData.gender || coopFullData.detalhes_erp?.SEXO)}
+                  <span className="text-slate-400 font-bold uppercase block">SEXO</span>
+                  <span className="font-bold text-slate-800 uppercase">
+                    {coopFullData.gender === 'F' ? 'FEMININO' : 'MASCULINO'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">RG / Expedição</span>
+                  <span className="text-slate-400 font-bold uppercase block">RG / EXPEDICAO</span>
                   <span className="font-bold text-slate-800">
-                    {coopFullData.rg_number || '-'} {coopFullData.rg_issuer ? `(${coopFullData.rg_issuer})` : ''}
+                    {coopFullData.rg_number || '-'} {coopFullData.rg_issuer ? `(${toUpperNoAccents(coopFullData.rg_issuer)})` : ''}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">CTPS / Série</span>
+                  <span className="text-slate-400 font-bold uppercase block">CTPS / SERIE</span>
                   <span className="font-bold text-slate-800 font-mono">
                     {coopFullData.ctps_number || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">PIS / PASEP / NIT</span>
+                  <span className="text-slate-400 font-bold uppercase block">PIS / PASEP / NIT</span>
                   <span className="font-bold text-slate-800 font-mono">
                     {coopFullData.pis_number || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Naturalidade</span>
-                  <span className="font-bold text-slate-800">
-                    {coopFullData.birth_city ? `${coopFullData.birth_city}/${coopFullData.birth_state}` : '-'}
+                  <span className="text-slate-400 font-bold uppercase block">NATURALIDADE</span>
+                  <span className="font-bold text-slate-800 uppercase">
+                    {coopFullData.birth_city ? `${toUpperNoAccents(coopFullData.birth_city)}/${toUpperNoAccents(coopFullData.birth_state)}` : '-'}
                   </span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-slate-400 font-medium block">Filiação</span>
-                  <span className="font-bold text-slate-800 block">
-                    Mãe: {coopFullData.mother_name || '-'}
+                <div className="col-span-2 pt-2 border-t border-slate-100">
+                  <span className="text-slate-400 font-bold uppercase block">FILIACAO</span>
+                  <span className="font-bold text-slate-800 block uppercase">
+                    MAE: {toUpperNoAccents(coopFullData.mother_name) || '-'}
                   </span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    Pai: {coopFullData.father_name || '-'}
+                  <span className="font-bold text-slate-800 block mt-0.5 uppercase">
+                    PAI: {toUpperNoAccents(coopFullData.father_name) || '-'}
+                  </span>
+                </div>
+                <div className="col-span-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-400 font-bold uppercase block text-[10px]">CATEGORIA E-SOCIAL (TABELA 01)</span>
+                    <span className="font-extrabold text-blue-700 block text-xs mt-0.5 uppercase">
+                      {coopFullData.categoria_esocial?.completo || '731 - CONTRIBUINTE INDIVIDUAL - COOPERADO QUE PRESTA SERVICOS POR INTERMEDIO DE COOPERATIVA DE TRABALHO'}
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 uppercase shrink-0">
+                    CÓD 731
                   </span>
                 </div>
               </div>
@@ -702,39 +743,39 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Landmark className="h-4 w-4 text-emerald-600" />
-                <span>Dados Bancários para Repasse</span>
+                <span className="uppercase">DADOS BANCARIOS PARA REPASSE</span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="col-span-2">
-                  <span className="text-slate-400 font-medium block">Instituição Financeira</span>
-                  <span className="font-extrabold text-emerald-700 text-sm">
-                    {getFormattedBank(coopFullData.bank_code, coopFullData.bank_name).name}
+                  <span className="text-slate-400 font-bold uppercase block">INSTITUICAO FINANCEIRA</span>
+                  <span className="font-extrabold text-emerald-700 text-sm uppercase">
+                    {toUpperNoAccents(getFormattedBank(coopFullData.bank_code, coopFullData.bank_name).name)}
                   </span>
-                  <span className="text-[11px] text-slate-400 block">
-                    Código Febraban: {getFormattedBank(coopFullData.bank_code, coopFullData.bank_name).code}
+                  <span className="text-[11px] text-slate-400 font-bold uppercase block">
+                    CODIGO FEBRABAN: {getFormattedBank(coopFullData.bank_code, coopFullData.bank_name).code}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Agência Bancária</span>
+                  <span className="text-slate-400 font-bold uppercase block">AGENCIA BANCARIA</span>
                   <span className="font-bold text-slate-800">{coopFullData.agency || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Conta Corrente</span>
+                  <span className="text-slate-400 font-bold uppercase block">CONTA CORRENTE</span>
                   <span className="font-bold text-slate-800 font-mono">
                     {coopFullData.account_number}
                     {coopFullData.account_digit ? `-${coopFullData.account_digit}` : ''}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Tipo de Conta</span>
-                  <span className="font-bold text-slate-800">
-                    {coopFullData.account_type || 'Conta-Corrente'}
+                  <span className="text-slate-400 font-bold uppercase block">TIPO DE CONTA</span>
+                  <span className="font-bold text-slate-800 uppercase">
+                    {toUpperNoAccents(coopFullData.account_type || 'CONTA-CORRENTE')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Chave PIX</span>
+                  <span className="text-slate-400 font-bold uppercase block">CHAVE PIX</span>
                   <span className="font-bold text-slate-800 font-mono block break-all text-[11px] leading-tight select-all">
-                    {coopFullData.pix_key || 'Não cadastrada'}
+                    {coopFullData.pix_key || 'NAO CADASTRADA'}
                   </span>
                 </div>
               </div>
@@ -743,35 +784,40 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Phone className="h-4 w-4 text-sky-600" />
-                <span>Contatos & Endereço</span>
+                <span className="uppercase">CONTATOS & ENDERECO</span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-400 font-medium block">WhatsApp / Celular</span>
+                  <span className="text-slate-400 font-bold uppercase block">WHATSAPP / CELULAR</span>
                   <span className="font-bold text-slate-800 font-mono">
                     {coopFullData.whatsapp_number || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Telefone de Contato</span>
+                  <span className="text-slate-400 font-bold uppercase block">TELEFONE DE CONTATO</span>
                   <span className="font-bold text-slate-800 font-mono">
                     {coopFullData.secondary_phone || coopFullData.whatsapp_number || '-'}
                   </span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-400 font-medium block">E-mail</span>
-                  <span className="font-bold text-slate-800 break-all">
-                    {coopFullData.email || '-'}
+                  <span className="text-slate-400 font-bold uppercase block">E-MAIL</span>
+                  <span className="font-bold text-slate-800 break-all uppercase">
+                    {toUpperNoAccents(coopFullData.email || '-')}
                   </span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-slate-400 font-medium block">Endereço Residencial</span>
-                  <span className="font-bold text-slate-800">
-                    {coopFullData.street ? `${coopFullData.street}, nº ${coopFullData.number || 'S/N'}` : '-'}, {coopFullData.neighborhood || ''} - {coopFullData.city}/{coopFullData.state}
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-mono block mt-0.5">
-                    CEP: {coopFullData.zip_code || '-'}
-                  </span>
+                <div className="col-span-2 space-y-1 pt-1 border-t border-slate-100">
+                  <span className="text-slate-400 font-bold uppercase block">ENDERECO RESIDENCIAL COMPLETO</span>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-800 space-y-1 uppercase font-bold">
+                    <p>
+                      {toUpperNoAccents(coopFullData.street || '-')}, Nº {toUpperNoAccents(coopFullData.number || 'S/N')}
+                    </p>
+                    <p className="text-slate-600 font-medium text-[11px]">
+                      BAIRRO: {toUpperNoAccents(coopFullData.neighborhood || '-')} • CIDADE: {toUpperNoAccents(coopFullData.city || '-')}/{toUpperNoAccents(coopFullData.state || '-')}
+                    </p>
+                    <p className="text-slate-500 font-mono text-[11px]">
+                      CEP: {coopFullData.zip_code || '-'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1414,6 +1460,38 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {/* ABA 4: E-SOCIAL (RENOMEADA) */}
       {activeCoopTab === 'esocial' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* BANNER OFICIAL: CATEGORIA E-SOCIAL DO COOPERADO */}
+          <div className="bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-indigo-50/90 p-5 rounded-3xl border border-blue-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex flex-col items-center justify-center font-black shadow-md shadow-blue-600/20 shrink-0">
+                <span className="text-[10px] leading-none uppercase tracking-wider text-blue-200 font-bold">CÓD</span>
+                <span className="text-base leading-tight font-black">{esocialData?.categoria?.codigo || coopFullData?.categoria_esocial?.codigo || '731'}</span>
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 bg-blue-100/90 px-2.5 py-0.5 rounded-md border border-blue-200">
+                    Categoria eSocial Oficial (Tabela 01)
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">
+                    Código {esocialData?.categoria?.codigo || coopFullData?.categoria_esocial?.codigo || '731'}
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-slate-900 leading-snug">
+                  {esocialData?.categoria?.descricao || coopFullData?.categoria_esocial?.descricao || 'Contribuinte individual - Cooperado que presta serviços por intermédio de cooperativa de trabalho'}
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Enquadramento legal para Cooperativas de Trabalho conforme leiaute oficial do eSocial (Governo Federal).
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 self-start md:self-auto">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Homologado no eSocial
+              </span>
+            </div>
+          </div>
+
           {esocialData?.metricas && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
@@ -1796,35 +1874,189 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
         </div>
       )}
 
-      {/* ABA 7: DOCUMENTOS ASSINADOS */}
+      {/* ABA 7: DOCUMENTOS / TERMOS ASSINADOS */}
       {activeCoopTab === 'documentos' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4 animate-in fade-in">
-          <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-            Termos e Propostas Assinadas Digitalmente (AssinaCoop)
-          </h3>
-          {coopFullData.documentos?.length === 0 ? (
-            <p className="text-xs text-slate-400 py-6 text-center">Nenhum termo digitalizado encontrado.</p>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {coopFullData.documentos?.map((doc: any, idx: number) => (
-                <div key={idx} className="py-3.5 flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-slate-900 text-xs block">{doc.tipo_documento}</span>
-                    <span className="text-[11px] text-slate-500">
-                      Criado em: {formatDate(doc.data_criacao)} • Assinado em: {doc.data_assinatura || '-'}
+        <div className="space-y-6 animate-in fade-in">
+          {/* SEÇÃO 1: TERMOS OFICIAIS DO EASYCOOP (ADESÃO E DESLIGAMENTO) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <FileCheck2 className="h-5 w-5 text-sky-600" />
+                <span>TERMOS DO EASYCOOP (DOWNLOAD & VISUALIZACAO)</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 uppercase font-medium">
+                DOCUMENTOS OFICIAIS DE INGRESSO E DESLIGAMENTO CATALOGADOS NO GOOGLE DRIVE E VINCULADOS AO COOPERADO.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* CARD 1: FICHA DE ADESÃO */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-gradient-to-b from-sky-50/60 to-white flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+                      FICHA DE ADESAO (EASY)
+                    </span>
+                    {coopFullData.termos_easy?.adesao ? (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        DISPONIVEL
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                        NAO LOCALIZADA
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="text-sm font-black text-slate-800 mt-3 break-all uppercase">
+                    {coopFullData.termos_easy?.adesao?.file_name || 'FICHA DE ADESAO CADASTRAL'}
+                  </h4>
+
+                  <div className="mt-2 space-y-1 text-xs text-slate-600 uppercase">
+                    <div>
+                      <span className="text-slate-400 font-bold">MATRICULA: </span>
+                      <span className="font-mono font-bold text-slate-800">
+                        #{coopFullData.termos_easy?.adesao?.matricula || coopFullData.registration_number || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold">CPF: </span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {formatCpf(coopFullData.termos_easy?.adesao?.cpf || coopFullData.document)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {coopFullData.termos_easy?.adesao ? (
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80">
+                    <a
+                      href={coopFullData.termos_easy.adesao.download_url}
+                      download={coopFullData.termos_easy.adesao.file_name}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <FileDown className="h-4 w-4" />
+                      <span>BAIXAR PDF</span>
+                    </a>
+                    {coopFullData.termos_easy.adesao.web_view_link && (
+                      <a
+                        href={coopFullData.termos_easy.adesao.web_view_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <span>ABRIR DRIVE</span>
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-400 italic uppercase">
+                    DOCUMENTO NAO LOCALIZADO NA BASE DO DRIVE
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 2: FICHA DE DESLIGAMENTO */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-gradient-to-b from-rose-50/60 to-white flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                      FICHA DE DESLIGAMENTO (EASY)
+                    </span>
+                    {coopFullData.termos_easy?.desligamento ? (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        DISPONIVEL
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                        SEM DESLIGAMENTO
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="text-sm font-black text-slate-800 mt-3 break-all uppercase">
+                    {coopFullData.termos_easy?.desligamento?.file_name || 'TERMO / FICHA DE DESLIGAMENTO'}
+                  </h4>
+
+                  <div className="mt-2 space-y-1 text-xs text-slate-600 uppercase">
+                    <div>
+                      <span className="text-slate-400 font-bold">DATA DESLIGAMENTO: </span>
+                      <span className="font-bold text-slate-800">
+                        {coopFullData.termos_easy?.desligamento?.termination_date
+                          ? formatDate(coopFullData.termos_easy.desligamento.termination_date)
+                          : (coopFullData.termination_date ? formatDate(coopFullData.termination_date) : 'VINCULO ATIVO')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold">CONTRATO: </span>
+                      <span className="font-bold text-slate-800">
+                        {toUpperNoAccents(coopFullData.termos_easy?.desligamento?.contract_name || coopFullData.contrato_atual?.tomador_nome || '-')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {coopFullData.termos_easy?.desligamento ? (
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80">
+                    <a
+                      href={coopFullData.termos_easy.desligamento.download_url}
+                      download={coopFullData.termos_easy.desligamento.file_name}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <FileDown className="h-4 w-4" />
+                      <span>BAIXAR PDF</span>
+                    </a>
+                    {coopFullData.termos_easy.desligamento.web_view_link && (
+                      <a
+                        href={coopFullData.termos_easy.desligamento.web_view_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <span>ABRIR DRIVE</span>
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-400 italic uppercase">
+                    COOPERADO SEM TERMO DE DESLIGAMENTO (VINCULO ATIVO OU NAO DIGITALIZADO)
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO 2: TERMOS DIGITALIZADOS (ASSINACOOP) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+              TERMOS E PROPOSTAS ASSINADAS DIGITALMENTE (ASSINACOOP)
+            </h3>
+            {coopFullData.documentos?.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center uppercase">NENHUM TERMO DIGITALIZADO ENCONTRADO NO ASSINACOOP.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {coopFullData.documentos?.map((doc: any, idx: number) => (
+                  <div key={idx} className="py-3.5 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block uppercase">{toUpperNoAccents(doc.tipo_documento)}</span>
+                      <span className="text-[11px] text-slate-500 uppercase">
+                        CRIADO EM: {formatDate(doc.data_criacao)} • ASSINADO EM: {doc.data_assinatura || '-'}
+                      </span>
+                    </div>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                        doc.finalizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {toUpperNoAccents(doc.status || (doc.finalizado ? 'ASSINADO' : 'PENDENTE'))}
                     </span>
                   </div>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                      doc.finalizado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {doc.status || (doc.finalizado ? 'Assinado' : 'Pendente')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

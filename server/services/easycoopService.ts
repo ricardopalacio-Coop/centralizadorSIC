@@ -100,6 +100,54 @@ function calcularTempoCooperativa(dtAdmissao?: string | null, dtDesligamento?: s
 }
 
 /**
+ * Utilitário global para normalização de texto:
+ * 1. Corrige mojibake
+ * 2. Remove acentos e caracteres diacríticos
+ * 3. Converte para CAIXA ALTA (UPPERCASE)
+ */
+export function toUpperNoAccents(str: any): string {
+  if (str === null || str === undefined) return "";
+  let s = String(str);
+  try {
+    if (/[ÃÂÁÉÍÓÚ]/i.test(s)) {
+      const decoded = Buffer.from(s, "latin1").toString("utf8");
+      if (!decoded.includes("\ufffd") && decoded.length < s.length) {
+        s = decoded;
+      }
+    }
+  } catch {}
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+}
+
+/**
+ * Retorna as informações oficiais da Categoria do Trabalhador no eSocial (Tabela 01)
+ * Para cooperados vinculados à cooperativa de trabalho, o código governamental é 731.
+ */
+export function getEsocialCategoryInfo(code?: string | number | null) {
+  let c = String(code || "").trim();
+  if (!c || c === "734") {
+    c = "731";
+  }
+  const descMap: Record<string, string> = {
+    "731": "Contribuinte individual - Cooperado que presta serviços por intermédio de cooperativa de trabalho",
+    "734": "Contribuinte individual - Transportador autônomo associado a cooperativa",
+    "738": "Contribuinte individual - Cooperado filiado a cooperativa de produção",
+    "721": "Contribuinte individual - Diretor não empregado, com FGTS",
+    "722": "Contribuinte individual - Diretor não empregado, sem FGTS",
+  };
+  const descricao = descMap[c] || "Contribuinte individual - Cooperado que presta serviços por intermédio de cooperativa de trabalho";
+  return {
+    codigo: c,
+    descricao,
+    completo: `${c} - ${descricao}`,
+  };
+}
+
+/**
  * Retorna o dossiê 360° completo do cooperado
  */
 export async function getEasycoopCooperadoFull(cpf: string) {
@@ -143,47 +191,54 @@ export async function getEasycoopCooperadoFull(cpf: string) {
     "SELECT nome, cpf, sexo, DATE_FORMAT(data_nascimento, '%Y-%m-%d') AS data_nascimento, deduz_irrf, tem_convenio FROM easycoop_dependentes WHERE document = ?",
     [numericCpf]
   );
+  dependentes.forEach((d: any) => {
+    d.nome = toUpperNoAccents(d.nome);
+  });
 
-  // 4. Histórico de Alocações em Contratos/Tomadores (easycoop_alocacoes)
+  // 4. Histórico de Alocações em Contratos/Tomadores (easycoop_alocacoes + easycoop_contratos)
   const [alocacoes] = await pool.query<any[]>(
-    `SELECT cliente_id, contrato_id, tomador_nome, contrato_descricao, contrato_numero,
-            cargo, cbo, valor_base, horas, 
-            DATE_FORMAT(data_inicio, '%Y-%m-%d') AS data_inicio, 
-            DATE_FORMAT(data_fim, '%Y-%m-%d') AS data_fim, 
-            CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 'Ativo' ELSE 'Inativo' END AS status_alocacao,
+    `SELECT ea.cliente_id, ea.contrato_id, 
+            COALESCE(NULLIF(ec.tomador_razao, ''), ea.tomador_nome) AS tomador_nome,
+            ec.tomador_razao,
+            ea.contrato_descricao, ea.contrato_numero,
+            ea.cargo, ea.cbo, ea.valor_base, ea.horas, 
+            DATE_FORMAT(ea.data_inicio, '%Y-%m-%d') AS data_inicio, 
+            DATE_FORMAT(ea.data_fim, '%Y-%m-%d') AS data_fim, 
+            CASE WHEN ea.status_alocacao IN ('Ativo', 'S', 'A') THEN 'Ativo' ELSE 'Inativo' END AS status_alocacao,
             CASE 
-              WHEN UPPER(contrato_descricao) LIKE '%DESCANSO%' OR UPPER(contrato_descricao) LIKE '%DAR%' THEN 4
-              WHEN UPPER(contrato_descricao) LIKE '%SOBRA%' THEN 3
-              WHEN UPPER(contrato_descricao) LIKE '%COORDENA%' THEN 2
+              WHEN UPPER(ea.contrato_descricao) LIKE '%DESCANSO%' OR UPPER(ea.contrato_descricao) LIKE '%DAR%' THEN 4
+              WHEN UPPER(ea.contrato_descricao) LIKE '%SOBRA%' THEN 3
+              WHEN UPPER(ea.contrato_descricao) LIKE '%COORDENA%' THEN 2
               ELSE 1
             END AS prioridade_tipo
-     FROM easycoop_alocacoes 
-     WHERE document = ? 
+     FROM easycoop_alocacoes ea
+     LEFT JOIN easycoop_contratos ec ON ea.cliente_id = ec.cliente_id AND ea.contrato_id = ec.contrato_id
+     WHERE ea.document = ? 
      ORDER BY 
-       (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
-       (CASE 
-         WHEN UPPER(contrato_descricao) LIKE '%DESCANSO%' OR UPPER(contrato_descricao) LIKE '%DAR%' THEN 4
-         WHEN UPPER(contrato_descricao) LIKE '%SOBRA%' THEN 3
-         WHEN UPPER(contrato_descricao) LIKE '%COORDENA%' THEN 2
-         ELSE 1
-       END) ASC,
-       data_inicio DESC,
-       id DESC`,
+       (CASE WHEN ea.status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+       prioridade_tipo ASC,
+       ea.data_inicio DESC,
+       ea.id DESC`,
     [numericCpf]
   );
 
   // 5. Garantir que descanso, sobras e coordenação não sobreponham cargos operacionais
   alocacoes.forEach((a: any) => {
+    a.tomador_nome = toUpperNoAccents(a.tomador_nome);
     if (a.contrato_descricao && /SOBRA/i.test(a.contrato_descricao)) {
-      a.contrato_descricao = "DISTRIBUIÇÃO DE SOBRAS";
+      a.contrato_descricao = "DISTRIBUICAO DE SOBRAS";
+    } else if (a.contrato_descricao) {
+      a.contrato_descricao = toUpperNoAccents(a.contrato_descricao);
     }
     const isAuxiliar =
-      a.contrato_descricao?.toUpperCase().includes("DESCANSO") ||
-      a.contrato_descricao?.toUpperCase().includes("DAR") ||
-      a.contrato_descricao?.toUpperCase().includes("SOBRA");
+      a.contrato_descricao?.includes("DESCANSO") ||
+      a.contrato_descricao?.includes("DAR") ||
+      a.contrato_descricao?.includes("SOBRA");
     if (isAuxiliar) {
       a.cargo = null;
       a.cbo = null;
+    } else if (a.cargo) {
+      a.cargo = toUpperNoAccents(a.cargo);
     }
   });
 
@@ -194,25 +249,73 @@ export async function getEasycoopCooperadoFull(cpf: string) {
     || alocacoes[0]
     || null;
 
-  // 6. Tempo de Cooperativa
+  // 7. Tempo de Cooperativa
   const tempoVida = calcularTempoCooperativa(base.admission_date, base.termination_date);
 
-  // 7. Documentos / Assinaturas (easycoop_documentos)
+  // 8. Documentos / Assinaturas (easycoop_documentos)
   let documentos: any[] = [];
   try {
     const [docs] = await pool.query<any[]>(
       "SELECT tipo_documento, status, DATE_FORMAT(data_criacao, '%Y-%m-%d') AS data_criacao, data_assinatura, finalizado FROM easycoop_documentos WHERE document = ?",
       [numericCpf]
     );
-    documentos = docs;
+    documentos = docs.map((d: any) => ({
+      ...d,
+      tipo_documento: toUpperNoAccents(d.tipo_documento),
+      status: toUpperNoAccents(d.status),
+    }));
   } catch {}
 
-  // 8. Quotas-Parte
+  // 9. Termos Oficiais do EasyCoop (Adesão e Desligamento)
+  let termoAdesao: any = null;
+  let termoDesligamento: any = null;
+
+  try {
+    const matr = base.registration_number ? String(base.registration_number) : "";
+    const [adesaoRows] = await pool.query<any[]>(
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, web_view_link, web_content_link, created_at
+       FROM fichas_cadastrais
+       WHERE (REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), '/', '') = ?
+              OR (matricula IS NOT NULL AND matricula != '' AND matricula = ?))
+       ORDER BY id DESC LIMIT 1`,
+      [numericCpf, matr]
+    );
+    if (adesaoRows.length > 0) {
+      termoAdesao = {
+        ...adesaoRows[0],
+        cooperado_name: toUpperNoAccents(adesaoRows[0].cooperado_name),
+        tipo_documento: "FICHA DE ADESAO (EASY)",
+        download_url: `/api/drive/download/${adesaoRows[0].file_id}`,
+      };
+    }
+
+    const [desligRows] = await pool.query<any[]>(
+      `SELECT id, file_id, file_name, cooperado_name, cpf, matricula, DATE_FORMAT(termination_date, '%Y-%m-%d') AS termination_date, contract_name, web_view_link, web_content_link, created_at
+       FROM fichas_desligamento
+       WHERE (REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), '/', '') = ?
+              OR (matricula IS NOT NULL AND matricula != '' AND matricula = ?))
+       ORDER BY id DESC LIMIT 1`,
+      [numericCpf, matr]
+    );
+    if (desligRows.length > 0) {
+      termoDesligamento = {
+        ...desligRows[0],
+        cooperado_name: toUpperNoAccents(desligRows[0].cooperado_name),
+        contract_name: toUpperNoAccents(desligRows[0].contract_name),
+        tipo_documento: "FICHA DE DESLIGAMENTO (EASY)",
+        download_url: `/api/drive/desligamento/download/${desligRows[0].file_id}`,
+      };
+    }
+  } catch (err: any) {
+    console.warn("[EasyCoop] Aviso ao buscar termos easy:", err.message);
+  }
+
+  // 10. Quotas-Parte
   const quotasConcluidas = base.quotas_concluidas === "S" || (base.quotas_pagas && base.quotas_pagas >= 10);
   const quotasPagas = base.quotas_pagas || 0;
   const quotasValor = Number(base.quotas_valor || 0);
 
-  const officialPosition = contratoAtivo?.cargo || base.position || "Cooperado";
+  const officialPosition = toUpperNoAccents(contratoAtivo?.cargo || base.position || "COOPERADO");
 
   let bankCode = base.bank_code;
   let bankName = base.bank_name;
@@ -223,27 +326,36 @@ export async function getEasycoopCooperadoFull(cpf: string) {
 
   return {
     ...base,
+    name: toUpperNoAccents(base.name),
+    mother_name: toUpperNoAccents(base.mother_name),
+    father_name: toUpperNoAccents(base.father_name),
+    street: toUpperNoAccents(base.street),
+    neighborhood: toUpperNoAccents(base.neighborhood),
+    city: toUpperNoAccents(base.city),
+    state: toUpperNoAccents(base.state),
+    contract_name: toUpperNoAccents(contratoAtivo?.tomador_nome || base.contract_name),
     bank_code: bankCode,
-    bank_name: bankName,
+    bank_name: toUpperNoAccents(bankName),
     gender: base.gender || "M",
     position: officialPosition,
-    position_cadastral: base.position_cadastral || null,
+    position_cadastral: toUpperNoAccents(base.position_cadastral || null),
     secondary_phone: telefoneConsolidado,
     tempo_cooperativa_dias: tempoVida.dias,
-    tempo_cooperativa_formatado: tempoVida.formatado,
+    tempo_cooperativa_formatado: toUpperNoAccents(tempoVida.formatado),
     contrato_atual: contratoAtivo,
     cargo_contrato: officialPosition,
+    categoria_esocial: getEsocialCategoryInfo(base.cod_cat_trab_esocial),
     quotas_info: {
       concluida: quotasConcluidas,
       pagas: quotasPagas,
       valor_total: quotasValor,
       texto: quotasConcluidas
-        ? `10 de 10 Quotas (Integralizada - R$ ${quotasValor.toFixed(2)})`
-        : `${quotasPagas} de 10 Quotas (R$ ${quotasValor.toFixed(2)})`,
+        ? `${quotasPagas} DE 10 QUOTAS (INTEGRALIZADA - R$ ${quotasValor.toFixed(2)})`
+        : `${quotasPagas} DE 10 QUOTAS (R$ ${quotasValor.toFixed(2)})`,
     },
     detalhes_erp: {
       RG: base.rg_number || null,
-      ORGEMISSOR: base.rg_issuer || null,
+      ORGEMISSOR: toUpperNoAccents(base.rg_issuer || null),
       SEXO: base.gender || "M",
       PIS: base.pis_number || null,
       CTPS: base.ctps_number || null,
@@ -252,6 +364,10 @@ export async function getEasycoopCooperadoFull(cpf: string) {
     dependentes,
     alocacoes,
     documentos,
+    termos_easy: {
+      adesao: termoAdesao,
+      desligamento: termoDesligamento,
+    },
     auditoria: [],
   };
 }
@@ -799,8 +915,23 @@ export async function getEasycoopCooperadoEsocial(
 
     const stats = statsRows[0] || {};
 
+    // Categoria do cooperado no eSocial (Padrão 731)
+    let catEsocialCode = "731";
+    try {
+      const [coopRows] = await pool.query<any[]>(
+        "SELECT cod_cat_trab_esocial FROM cooperados WHERE document = ? LIMIT 1",
+        [numericCpf]
+      );
+      if (coopRows.length > 0 && coopRows[0].cod_cat_trab_esocial) {
+        catEsocialCode = coopRows[0].cod_cat_trab_esocial;
+      }
+    } catch {}
+
+    const catEsocial = getEsocialCategoryInfo(catEsocialCode);
+
     return {
       eventos,
+      categoria: catEsocial,
       metricas: {
         totalTransmissoes: Number(stats.total_transmissoes || 0),
         totalAceitos: Number(stats.total_aceitos || 0),
@@ -815,6 +946,7 @@ export async function getEasycoopCooperadoEsocial(
     console.warn(`[EasyCoop eSocial Warning] Retornando fallback seguro para CPF ${numericCpf}:`, err.message);
     return {
       eventos: [],
+      categoria: getEsocialCategoryInfo("731"),
       metricas: {
         totalTransmissoes: 0,
         totalAceitos: 0,

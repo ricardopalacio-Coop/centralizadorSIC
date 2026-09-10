@@ -420,6 +420,7 @@ export async function initDb() {
       "ALTER TABLE easycoop_esocial ADD COLUMN nro_protocolo VARCHAR(100) NULL;",
       "ALTER TABLE easycoop_esocial ADD COLUMN nro_recibo VARCHAR(100) NULL;",
       "ALTER TABLE easycoop_esocial ADD COLUMN erro_envio TEXT NULL;",
+      "ALTER TABLE cooperados ADD COLUMN cod_cat_trab_esocial VARCHAR(10) NOT NULL DEFAULT '731';",
     ];
     for (const sql of esocialCols) {
       await connection.query(sql).catch(() => {});

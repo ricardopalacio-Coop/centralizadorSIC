@@ -38,3 +38,7 @@ Thumbs.db
 
 # Docker
 docker_data/
+
+# Archives & Dumps
+*.tar.gz
+*.sql

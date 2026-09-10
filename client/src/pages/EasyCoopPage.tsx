@@ -14,10 +14,9 @@ import {
   Mail,
   MapPin,
   CheckCircle2,
-  AlertCircle,
   FileText,
 } from "lucide-react";
-import { EasyCoopCooperadoDossier } from "../components/EasyCoopCooperadoDossier";
+import { EasyCoopCooperadoDossier, toUpperNoAccents } from "../components/EasyCoopCooperadoDossier";
 
 interface EasyCoopPageProps {
   initialMode?: "cooperado" | "contrato";
@@ -366,7 +365,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
                       }`}
                     >
                       <div className="truncate">
-                        <div className="font-bold text-xs text-slate-800 truncate">{c.name}</div>
+                        <div className="font-bold text-xs text-slate-800 truncate">{toUpperNoAccents(c.name)}</div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                           <span>{formatCpf(c.document)}</span>
                           <span>•</span>
@@ -375,7 +374,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
                               c.status === "Ativo" ? "text-emerald-600" : "text-slate-500"
                             }`}
                           >
-                            {c.status}
+                            {toUpperNoAccents(c.status)}
                           </span>
                         </div>
                       </div>
@@ -457,23 +456,23 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-extrabold text-xs text-slate-900 truncate">
-                            {ct.tomador_nome}
+                          <span className="font-extrabold text-xs text-slate-900 truncate uppercase">
+                            {toUpperNoAccents(ct.tomador_nome)}
                           </span>
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 uppercase ${
                               ct.status === "S" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
                             }`}
                           >
-                            {ct.status === "S" ? "Ativo" : "Inativo"}
+                            {ct.status === "S" ? "ATIVO" : "INATIVO"}
                           </span>
                         </div>
-                        <span className="text-[11px] text-indigo-700 font-medium block mt-1 truncate">
-                          {ct.contrato_descricao || "Sem descrição"}
+                        <span className="text-[11px] text-indigo-700 font-medium block mt-1 truncate uppercase">
+                          {toUpperNoAccents(ct.contrato_descricao || "SEM DESCRICAO")}
                         </span>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-200/60">
-                          <span>Doc nº {ct.numero_doc || ct.contrato_id}</span>
-                          <span className="font-bold text-slate-700">{ct.total_cooperados} cooperados</span>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-200/60 uppercase">
+                          <span>DOC Nº {ct.numero_doc || ct.contrato_id}</span>
+                          <span className="font-bold text-slate-700">{ct.total_cooperados} COOPERADOS</span>
                         </div>
                       </div>
                     );
@@ -517,21 +516,21 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
                         <span className="text-[10px] uppercase font-black tracking-wider text-indigo-300 block">
-                          Tomador / Entidade Contratante
+                          TOMADOR / ENTIDADE CONTRATANTE
                         </span>
-                        <h2 className="text-xl sm:text-2xl font-black">{contratoDetails.tomador_nome}</h2>
-                        <span className="text-xs text-slate-300 block mt-0.5">
-                          {contratoDetails.tomador_razao} • CNPJ: {contratoDetails.tomador_cnpj}
+                        <h2 className="text-xl sm:text-2xl font-black uppercase">{toUpperNoAccents(contratoDetails.tomador_nome)}</h2>
+                        <span className="text-xs text-slate-300 block mt-0.5 uppercase font-medium">
+                          {toUpperNoAccents(contratoDetails.tomador_razao)} • CNPJ: {contratoDetails.tomador_cnpj}
                         </span>
                       </div>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-extrabold border ${
+                        className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase border ${
                           contratoDetails.status === "S"
                             ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                             : "bg-slate-700 text-slate-300 border-slate-600"
                         }`}
                       >
-                        {contratoDetails.status === "S" ? "Contrato Ativo" : "Inativo"}
+                        {contratoDetails.status === "S" ? "CONTRATO ATIVO" : "INATIVO"}
                       </span>
                     </div>
 

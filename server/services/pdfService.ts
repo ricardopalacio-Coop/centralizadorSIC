@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import path from "path";
 import fs from "fs";
+import { toUpperNoAccents, getEsocialCategoryInfo } from "./easycoopService";
 
 interface ReceiptData {
   cooperadoName: string;
@@ -592,19 +593,22 @@ function drawCoopeduHeader(doc: PDFKit.PDFDocument, title: string, subtitle?: st
     try {
       doc.image(LOGO_PATH, 40, 35, { width: 130 });
     } catch {
-      doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ coopedu", 40, 38);
+      doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 38);
     }
   } else {
-    doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ coopedu", 40, 38);
+    doc.fillColor("#0284c7").fontSize(14).font("Helvetica-Bold").text("▲ COOPEDU", 40, 38);
   }
 
-  doc.fillColor("#0f172a").fontSize(11).font("Helvetica-Bold").text(title, 180, 38, { align: "right" });
-  if (subtitle) {
-    doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(subtitle, 180, 53, { align: "right" });
+  const normTitle = toUpperNoAccents(title);
+  const normSubtitle = subtitle ? toUpperNoAccents(subtitle) : undefined;
+
+  doc.fillColor("#0f172a").fontSize(11).font("Helvetica-Bold").text(normTitle, 180, 38, { align: "right" });
+  if (normSubtitle) {
+    doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(normSubtitle, 180, 53, { align: "right" });
   }
 
   doc.fillColor("#94a3b8").fontSize(7).font("Helvetica").text(
-    `Emissão: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • Centralizador SIC`,
+    toUpperNoAccents(`EMISSAO: ${new Date().toLocaleDateString("pt-BR")} AS ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • CENTRALIZADOR SIC`),
     180,
     65,
     { align: "right" }
@@ -675,121 +679,124 @@ export function generateEasycoopFichaPdf(coop: any, financialData?: any): Promis
       const grayBorder = "#e2e8f0";
       const bgLight = "#f8fafc";
 
-      drawCoopeduHeader(doc, "FICHA CADASTRAL E FINANCEIRA DO COOPERADO", "Base Oficial EasyCoop Analytics • Core Coopedu");
+      drawCoopeduHeader(doc, "FICHA CADASTRAL E FINANCEIRA DO COOPERADO", "BASE OFICIAL EASYCOOP ANALYTICS • CORE COOPEDU");
 
       let y = 92;
 
       // QUADRO 1: IDENTIFICAÇÃO CIVIL & VÍNCULO ESTATUTÁRIO
-      doc.rect(40, y, 515, 125).fillAndStroke(bgLight, grayBorder);
-      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("1. IDENTIFICAÇÃO CIVIL & VÍNCULO COOPERATIVO", 50, y + 8);
+      doc.rect(40, y, 515, 140).fillAndStroke(bgLight, grayBorder);
+      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("1. IDENTIFICACAO CIVIL & VINCULO COOPERATIVO", 50, y + 8);
 
       const bank = resolveOwlBank(coop.bank_code, coop.bank_name);
-      const atividadeOficial = coop.cargo_contrato || coop.position || "Cooperado";
+      const atividadeOficial = toUpperNoAccents(coop.cargo_contrato || coop.position || "COOPERADO");
 
       doc.fillColor(darkText).fontSize(8);
       // Linha 1
-      doc.font("Helvetica-Bold").text("Nome Completo:", 50, y + 25);
-      doc.font("Helvetica").text(String(coop.name || "NÃO INFORMADO").toUpperCase(), 130, y + 25);
+      doc.font("Helvetica-Bold").text("NOME COMPLETO:", 50, y + 25);
+      doc.font("Helvetica").text(toUpperNoAccents(coop.name || "NAO INFORMADO"), 140, y + 25, { width: 230 });
 
-      doc.font("Helvetica-Bold").text("CPF:", 360, y + 25);
-      doc.font("Helvetica").text(formatCpf(coop.document), 410, y + 25);
+      doc.font("Helvetica-Bold").text("CPF:", 380, y + 25);
+      doc.font("Helvetica").text(formatCpf(coop.document), 415, y + 25);
 
       // Linha 2
-      doc.font("Helvetica-Bold").text("Matrícula:", 50, y + 40);
-      doc.font("Helvetica").text(`#${coop.registration_number || "-"}`, 130, y + 40);
+      doc.font("Helvetica-Bold").text("MATRICULA:", 50, y + 41);
+      doc.font("Helvetica").text(`#${coop.registration_number || "-"}`, 140, y + 41);
 
-      doc.font("Helvetica-Bold").text("Admissão:", 210, y + 40);
-      doc.font("Helvetica").text(formatSafeDate(coop.admission_date), 260, y + 40);
+      doc.font("Helvetica-Bold").text("ADMISSAO:", 230, y + 41);
+      doc.font("Helvetica").text(formatSafeDate(coop.admission_date), 290, y + 41);
 
-      doc.font("Helvetica-Bold").text("Situação:", 360, y + 40);
-      doc.font("Helvetica").text(coop.status || "Ativo", 410, y + 40);
+      doc.font("Helvetica-Bold").text("SITUACAO:", 380, y + 41);
+      doc.font("Helvetica").text(toUpperNoAccents(coop.status || "ATIVO"), 435, y + 41);
 
       // Linha 3
-      doc.font("Helvetica-Bold").text("Atividade Oficial:", 50, y + 55);
-      doc.font("Helvetica-Bold").fillColor(primary).text(atividadeOficial, 130, y + 55);
+      doc.font("Helvetica-Bold").text("ATIVIDADE OFICIAL:", 50, y + 57);
+      doc.font("Helvetica-Bold").fillColor(primary).text(atividadeOficial, 140, y + 57, { width: 230 });
       doc.fillColor(darkText);
 
-      doc.font("Helvetica-Bold").text("Tempo na Coop:", 360, y + 55);
-      doc.font("Helvetica").text(coop.tempo_cooperativa_formatado || "-", 435, y + 55, { width: 115 });
+      doc.font("Helvetica-Bold").text("TEMPO NA COOP:", 380, y + 57);
+      doc.font("Helvetica").text(toUpperNoAccents(coop.tempo_cooperativa_formatado || "-"), 460, y + 57, { width: 90 });
 
       // Linha 4
-      doc.font("Helvetica-Bold").text("Quotas-Parte:", 50, y + 70);
-      doc.font("Helvetica").text(coop.quotas_info?.texto || "10 de 10 Quotas", 130, y + 70);
+      doc.font("Helvetica-Bold").text("QUOTAS-PARTE:", 50, y + 73);
+      doc.font("Helvetica").text(toUpperNoAccents(coop.quotas_info?.texto || "10 DE 10 QUOTAS"), 140, y + 73, { width: 230 });
 
-      doc.font("Helvetica-Bold").text("Nascimento:", 360, y + 70);
-      doc.font("Helvetica").text(formatSafeDate(coop.birth_date), 430, y + 70);
+      doc.font("Helvetica-Bold").text("NASCIMENTO:", 380, y + 73);
+      doc.font("Helvetica").text(formatSafeDate(coop.birth_date), 450, y + 73);
 
       // Linha 5
-      doc.font("Helvetica-Bold").text("RG / Órgão:", 50, y + 85);
-      doc.font("Helvetica").text(`${coop.rg_number || "-"} ${coop.rg_issuer ? `(${coop.rg_issuer})` : ""}`, 130, y + 85);
+      doc.font("Helvetica-Bold").text("RG / ORGAO:", 50, y + 89);
+      doc.font("Helvetica").text(`${coop.rg_number || "-"} ${coop.rg_issuer ? `(${toUpperNoAccents(coop.rg_issuer)})` : ""}`, 140, y + 89);
 
-      doc.font("Helvetica-Bold").text("PIS/PASEP:", 210, y + 85);
-      doc.font("Helvetica").text(coop.pis_number || "-", 265, y + 85);
+      doc.font("Helvetica-Bold").text("PIS/PASEP:", 230, y + 89);
+      doc.font("Helvetica").text(coop.pis_number || "-", 290, y + 89);
 
-      doc.font("Helvetica-Bold").text("Sexo:", 360, y + 85);
-      doc.font("Helvetica").text(coop.gender === "F" ? "Feminino" : "Masculino", 400, y + 85);
+      doc.font("Helvetica-Bold").text("SEXO:", 380, y + 89);
+      doc.font("Helvetica").text(coop.gender === "F" ? "FEMININO" : "MASCULINO", 420, y + 89);
 
-      // Linha 6 - Filiação
-      doc.font("Helvetica-Bold").text("Filiação:", 50, y + 100);
-      doc.font("Helvetica").text(`Mãe: ${coop.mother_name || "-"} | Pai: ${coop.father_name || "-"}`, 130, y + 100, { width: 410 });
+      // Linha 6
+      doc.font("Helvetica-Bold").text("NATURALIDADE:", 50, y + 105);
+      doc.font("Helvetica").text(coop.birth_city ? `${toUpperNoAccents(coop.birth_city)}/${toUpperNoAccents(coop.birth_state)}` : "-", 140, y + 105);
 
-      y += 135;
+      doc.font("Helvetica-Bold").text("CTPS:", 230, y + 105);
+      doc.font("Helvetica").text(coop.ctps_number || "-", 270, y + 105);
 
-      // QUADRO 2: CONTRATO E TOMADOR ATUAL (Sem Valor Base Contratado!)
+      // Linha 7 - Filiação
+      doc.font("Helvetica-Bold").text("FILIACAO:", 50, y + 121);
+      doc.font("Helvetica").text(`MAE: ${toUpperNoAccents(coop.mother_name) || "-"} | PAI: ${toUpperNoAccents(coop.father_name) || "-"}`, 140, y + 121, { width: 410 });
+
+      y += 150;
+
+      // QUADRO 2: CONTRATO E TOMADOR ATUAL
       if (coop.contrato_atual) {
         doc.rect(40, y, 515, 65).fillAndStroke(bgLight, grayBorder);
-        doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("2. ALOCAÇÃO EM CONTRATO E TOMADOR ATUAL", 50, y + 8);
+        doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("2. ALOCACAO EM CONTRATO E TOMADOR ATUAL", 50, y + 8);
 
         doc.fillColor(darkText).fontSize(8);
-        doc.font("Helvetica-Bold").text("Cliente / Tomador:", 50, y + 25);
-        doc.font("Helvetica").text(coop.contrato_atual.tomador_nome || "COOPEDU", 140, y + 25);
+        doc.font("Helvetica-Bold").text("CLIENTE / TOMADOR:", 50, y + 25);
+        doc.font("Helvetica").text(toUpperNoAccents(coop.contrato_atual.tomador_nome || coop.contract_name || "COOPEDU"), 155, y + 25, { width: 390 });
 
-        doc.font("Helvetica-Bold").text("Contrato:", 320, y + 25);
-        doc.font("Helvetica").text(coop.contrato_atual.contrato_descricao || "Contrato Geral", 370, y + 25, { width: 175 });
+        doc.font("Helvetica-Bold").text("CONTRATO:", 50, y + 42);
+        doc.font("Helvetica").text(toUpperNoAccents(coop.contrato_atual.contrato_descricao || "CONTRATO GERAL"), 110, y + 42, { width: 230 });
 
-        doc.font("Helvetica-Bold").text("Atividade no Contrato:", 50, y + 42);
-        doc.font("Helvetica-Bold").fillColor("#047857").text(coop.cargo_contrato || atividadeOficial, 155, y + 42);
-        doc.fillColor(darkText);
-
-        doc.font("Helvetica-Bold").text("Vigência:", 320, y + 42);
-        doc.font("Helvetica").text(`${formatSafeDate(coop.contrato_atual.data_inicio)} até ${formatSafeDate(coop.contrato_atual.data_fim)}`, 370, y + 42);
+        doc.font("Helvetica-Bold").text("VIGENCIA:", 350, y + 42);
+        doc.font("Helvetica").text(`${formatSafeDate(coop.contrato_atual.data_inicio)} ATE ${formatSafeDate(coop.contrato_atual.data_fim)}`, 405, y + 42);
 
         y += 75;
       }
 
-      // QUADRO 3: DADOS BANCÁRIOS (BANCO OWL) & CONTATOS
-      doc.rect(40, y, 515, 80).fillAndStroke(bgLight, grayBorder);
-      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("3. DADOS BANCÁRIOS PARA REPASSE (OWL) & CONTATOS", 50, y + 8);
+      // QUADRO 3: DADOS BANCÁRIOS & CONTATOS
+      doc.rect(40, y, 515, 90).fillAndStroke(bgLight, grayBorder);
+      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("3. DADOS BANCARIOS PARA REPASSE (OWL) & CONTATOS", 50, y + 8);
 
       doc.fillColor(darkText).fontSize(8);
       // Linha 1 Bancária
-      doc.font("Helvetica-Bold").text("Instituição Bancária:", 50, y + 25);
-      doc.font("Helvetica-Bold").fillColor("#047857").text(`${bank.name} (Cód: ${bank.code})`, 150, y + 25);
+      doc.font("Helvetica-Bold").text("INSTITUICAO BANCARIA:", 50, y + 25);
+      doc.font("Helvetica-Bold").fillColor("#047857").text(`${toUpperNoAccents(bank.name)} (COD: ${bank.code})`, 165, y + 25);
       doc.fillColor(darkText);
 
-      doc.font("Helvetica-Bold").text("Agência / Conta:", 320, y + 25);
-      doc.font("Helvetica").text(`Ag: ${coop.agency || "0001"} | CC: ${coop.account_number || "-"}-${coop.account_digit || ""}`, 405, y + 25);
+      doc.font("Helvetica-Bold").text("AGENCIA / CONTA:", 360, y + 25);
+      doc.font("Helvetica").text(`AG: ${coop.agency || "0001"} | CC: ${coop.account_number || "-"}-${coop.account_digit || ""}`, 445, y + 25);
 
-      // Linha 2
-      doc.font("Helvetica-Bold").text("Chave PIX:", 50, y + 40);
-      doc.font("Helvetica").text(coop.pix_key || formatCpf(coop.document), 140, y + 40, { width: 175, ellipsis: true });
+      // Linha 2 Contatos
+      doc.font("Helvetica-Bold").text("CHAVE PIX:", 50, y + 41);
+      doc.font("Helvetica").text(coop.pix_key || formatCpf(coop.document), 110, y + 41, { width: 140 });
 
-      doc.font("Helvetica-Bold").text("WhatsApp / Celular:", 320, y + 40);
-      doc.font("Helvetica").text(coop.whatsapp_number || coop.secondary_phone || "-", 420, y + 40, { width: 130, ellipsis: true });
+      doc.font("Helvetica-Bold").text("WHATSAPP / CELULAR:", 260, y + 41);
+      doc.font("Helvetica").text(coop.whatsapp_number || coop.secondary_phone || "-", 375, y + 41);
 
-      // Linha 3
-      doc.font("Helvetica-Bold").text("E-mail:", 50, y + 55);
-      doc.font("Helvetica").text(coop.email || "-", 140, y + 55, { width: 175, ellipsis: true });
+      doc.font("Helvetica-Bold").text("E-MAIL:", 50, y + 57);
+      doc.font("Helvetica").text(toUpperNoAccents(coop.email || "-"), 95, y + 57, { width: 450 });
 
-      doc.font("Helvetica-Bold").text("Endereço:", 320, y + 55);
-      const endStr = `${coop.street || "-"}, ${coop.number || "S/N"} - ${coop.city || ""}/${coop.state || ""}`;
-      doc.font("Helvetica").text(endStr, 375, y + 55, { width: 175, ellipsis: true });
+      // Linha 3 Endereço Completo
+      doc.font("Helvetica-Bold").text("ENDERECO:", 50, y + 72);
+      const fullEndStr = toUpperNoAccents(`${coop.street || "-"}, ${coop.number || "S/N"} - ${coop.neighborhood || ""} - ${coop.city || ""}/${coop.state || ""} - CEP: ${coop.zip_code || "-"}`);
+      doc.font("Helvetica").text(fullEndStr, 110, y + 72, { width: 435 });
 
-      y += 90;
+      y += 100;
 
       // QUADRO 4: HISTÓRICO FINANCEIRO CONSOLIDADO
       doc.rect(40, y, 515, 62).fillAndStroke(bgLight, grayBorder);
-      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("4. HISTÓRICO FINANCEIRO CONSOLIDADO DE REPASSES", 50, y + 8);
+      doc.fillColor(primary).fontSize(9).font("Helvetica-Bold").text("4. HISTORICO FINANCEIRO CONSOLIDADO DE REPASSES", 50, y + 8);
 
       // Mini-cards de totais
       const totais = financialData?.totais || {};
@@ -802,23 +809,23 @@ export function generateEasycoopFichaPdf(coop: any, financialData?: any): Promis
       doc.fillColor("#0f172a").fontSize(10).font("Helvetica-Bold").text(formatCurrency(bruto), 55, y + 38);
 
       doc.rect(200, y + 23, 140, 32).fillAndStroke("#ffffff", "#cbd5e1");
-      doc.fillColor("#64748b").fontSize(6.5).font("Helvetica-Bold").text("TOTAL RETENÇÕES (INSS/IRRF/TAXA)", 205, y + 27);
+      doc.fillColor("#64748b").fontSize(6.5).font("Helvetica-Bold").text("TOTAL RETENCOES (INSS/IRRF/TAXA)", 205, y + 27);
       doc.fillColor("#e11d48").fontSize(10).font("Helvetica-Bold").text(formatCurrency(retencoes), 205, y + 38);
 
       doc.rect(350, y + 23, 195, 32).fillAndStroke("#f0fdf4", "#86efac");
-      doc.fillColor("#166534").fontSize(6.5).font("Helvetica-Bold").text("LÍQUIDO TOTAL CREDITADO EM CONTA", 355, y + 27);
+      doc.fillColor("#166534").fontSize(6.5).font("Helvetica-Bold").text("LIQUIDO TOTAL CREDITADO EM CONTA", 355, y + 27);
       doc.fillColor("#15803d").fontSize(11).font("Helvetica-Bold").text(formatCurrency(liquido), 355, y + 38);
 
-      // Tabela de lançamentos completos (sem corte de slice!)
+      // Tabela de lançamentos completos
       let tableY = y + 70;
       doc.rect(50, tableY, 495, 15).fillAndStroke("#e2e8f0", "#cbd5e1");
       doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
-      doc.text("Comp.", 55, tableY + 4);
-      doc.text("Cliente / Tomador", 100, tableY + 4);
-      doc.text("Contrato Vinculado", 220, tableY + 4);
-      doc.text("Valor Bruto", 340, tableY + 4, { width: 60, align: "right" });
-      doc.text("Valor Líquido", 410, tableY + 4, { width: 65, align: "right" });
-      doc.text("Pagamento", 485, tableY + 4, { width: 55, align: "center" });
+      doc.text("COMP.", 55, tableY + 4);
+      doc.text("CLIENTE / TOMADOR", 100, tableY + 4);
+      doc.text("CONTRATO VINCULADO", 220, tableY + 4);
+      doc.text("VALOR BRUTO", 340, tableY + 4, { width: 60, align: "right" });
+      doc.text("VALOR LIQUIDO", 410, tableY + 4, { width: 65, align: "right" });
+      doc.text("PAGAMENTO", 485, tableY + 4, { width: 55, align: "center" });
 
       tableY += 15;
       const fechamentos = financialData?.fechamentos || [];
@@ -829,22 +836,22 @@ export function generateEasycoopFichaPdf(coop: any, financialData?: any): Promis
         for (const f of fechamentos) {
           if (tableY > 740) {
             doc.addPage();
-            drawCoopeduHeader(doc, "FICHA CADASTRAL E FINANCEIRA (CONTINUAÇÃO)", "Histórico Financeiro Consolidado de Repasses");
+            drawCoopeduHeader(doc, "FICHA CADASTRAL E FINANCEIRA (CONTINUACAO)", "HISTORICO FINANCEIRO CONSOLIDADO DE REPASSES");
             tableY = 90;
             doc.rect(50, tableY, 495, 15).fillAndStroke("#e2e8f0", "#cbd5e1");
             doc.fillColor(darkText).fontSize(7).font("Helvetica-Bold");
-            doc.text("Comp.", 55, tableY + 4);
-            doc.text("Cliente / Tomador", 100, tableY + 4);
-            doc.text("Contrato Vinculado", 220, tableY + 4);
-            doc.text("Valor Bruto", 340, tableY + 4, { width: 60, align: "right" });
-            doc.text("Valor Líquido", 410, tableY + 4, { width: 65, align: "right" });
-            doc.text("Pagamento", 485, tableY + 4, { width: 55, align: "center" });
+            doc.text("COMP.", 55, tableY + 4);
+            doc.text("CLIENTE / TOMADOR", 100, tableY + 4);
+            doc.text("CONTRATO VINCULADO", 220, tableY + 4);
+            doc.text("VALOR BRUTO", 340, tableY + 4, { width: 60, align: "right" });
+            doc.text("VALOR LIQUIDO", 410, tableY + 4, { width: 65, align: "right" });
+            doc.text("PAGAMENTO", 485, tableY + 4, { width: 55, align: "center" });
             tableY += 15;
           }
           doc.fillColor(darkText).fontSize(7).font("Helvetica");
           doc.text(`${String(f.mes).padStart(2, "0")}/${f.ano}`, 55, tableY + 3);
-          doc.text(f.tomador || "Coopedu Sede", 100, tableY + 3, { width: 115, height: 10 });
-          doc.text(f.contrato_descricao || f.tomador || "Contrato Geral", 220, tableY + 3, { width: 115, height: 10 });
+          doc.text(toUpperNoAccents(f.tomador || "COOPEDU SEDE"), 100, tableY + 3, { width: 115, height: 10 });
+          doc.text(toUpperNoAccents(f.contrato_descricao || f.tomador || "CONTRATO GERAL"), 220, tableY + 3, { width: 115, height: 10 });
           doc.text(formatCurrency(f.valor_bruto), 340, tableY + 3, { width: 60, align: "right" });
           doc.fillColor("#15803d").font("Helvetica-Bold").text(formatCurrency(f.valor_liquido), 410, tableY + 3, { width: 65, align: "right" });
           doc.fillColor(darkText).font("Helvetica").text(formatSafeDate(f.data_pagamento), 485, tableY + 3, { width: 55, align: "center" });
@@ -1358,22 +1365,30 @@ export function generateEasycoopEsocialPdf(coop: any, eventos: any[], metricas?:
       let y = 92;
 
       // IDENTIFICAÇÃO DO COOPERADO DECLARADO
-      doc.rect(40, y, 515, 48).fillAndStroke("#f8fafc", "#e2e8f0");
+      const catInfo = getEsocialCategoryInfo(coop.categoria_esocial?.codigo || coop.cod_cat_trab_esocial || "731");
+
+      doc.rect(40, y, 515, 52).fillAndStroke("#f8fafc", "#e2e8f0");
       doc.fillColor(darkText).fontSize(8);
-      doc.font("Helvetica-Bold").text("Cooperado:", 50, y + 8);
-      doc.font("Helvetica").text(String(coop.name || "N/I").toUpperCase(), 110, y + 8);
+      doc.font("Helvetica-Bold").text("Cooperado:", 50, y + 7);
+      doc.font("Helvetica").text(String(coop.name || "N/I").toUpperCase(), 105, y + 7, { width: 245, lineBreak: false });
 
-      doc.font("Helvetica-Bold").text("CPF:", 360, y + 8);
-      doc.font("Helvetica").text(formatCpf(coop.document), 400, y + 8);
+      doc.font("Helvetica-Bold").text("CPF:", 360, y + 7);
+      doc.font("Helvetica").text(formatCpf(coop.document), 390, y + 7);
 
-      doc.font("Helvetica-Bold").text("Atividade Oficial:", 50, y + 24);
-      doc.font("Helvetica-Bold").fillColor(primary).text(coop.cargo_contrato || coop.position || "Cooperado", 130, y + 24);
+      doc.font("Helvetica-Bold").text("Atividade Oficial:", 50, y + 22);
+      doc.font("Helvetica-Bold").fillColor(primary).text(coop.cargo_contrato || coop.position || "Cooperado", 130, y + 22, { width: 220, lineBreak: false });
       doc.fillColor(darkText);
 
-      doc.font("Helvetica-Bold").text("Categoria eSocial:", 360, y + 24);
-      doc.font("Helvetica").text("734 - Cooperado de Cooperativa", 445, y + 24);
+      if (coop.registration_number) {
+        doc.font("Helvetica-Bold").text("Matrícula:", 360, y + 22);
+        doc.font("Helvetica").text(String(coop.registration_number).padStart(8, "0"), 410, y + 22);
+      }
 
-      y += 58;
+      doc.font("Helvetica-Bold").text("Categoria eSocial:", 50, y + 36);
+      doc.font("Helvetica").fontSize(7.5).text(catInfo.completo, 135, y + 36, { width: 410, lineBreak: false });
+      doc.fontSize(8);
+
+      y += 62;
 
       // QUADRO DE MÉTRICAS GERAIS
       const totTrans = metricas?.totalTransmissoes || eventos.length;
