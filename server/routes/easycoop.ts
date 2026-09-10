@@ -327,10 +327,12 @@ const handleFolhaLotePdf = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const pdfBuffer = await generateEasycoopFolhaLotePdf(coop, folhasList);
+    const safeName = String(coop?.name || "COOPERADO").trim().toUpperCase().replace(/[/\\?%*:|"<>]/g, "_");
+    const filename = `${safeName}_DEM_PRODUTIVIDADE.pdf`;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `${isDownload ? "attachment" : "inline"}; filename="demonstrativos-${cpf}-${ano || "todos"}.pdf"`
+      `${isDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`
     );
     res.setHeader("Content-Length", pdfBuffer.length);
     return res.send(pdfBuffer);

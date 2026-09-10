@@ -1287,12 +1287,13 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
               <button
                 onClick={() => {
                   const comp = selectedFolhaComp || (folhaData?.folha ? { ano: folhaData.folha.ano, mes: folhaData.folha.mes, folha: folhaData.folha.folha || 1 } : null) || (folhaData?.competencias?.[0] || { ano: selectedAno || 2024, mes: selectedMes || 1, folha: 1 });
+                  const safeName = String(coopFullData?.name || 'COOPERADO').trim().toUpperCase().replace(/[/\\?%*:|"<>]/g, '_');
                   setPdfModal({
                     isOpen: true,
                     url: `/api/easycoop/cooperados/${selectedCpf}/pdf/folha-lote?ano=${comp.ano}&mes=${comp.mes}&folha=${comp.folha || 1}`,
                     title: 'Demonstrativo Mensal de Produtividade',
                     subtitle: `Competência ${String(comp.mes).padStart(2, '0')}/${comp.ano} • ${coopFullData.name}`,
-                    filename: `demonstrativo-${comp.ano}-${comp.mes}-${selectedCpf}.pdf`,
+                    filename: `${safeName}_DEM_PRODUTIVIDADE.pdf`,
                   });
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all cursor-pointer"
@@ -2068,12 +2069,13 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
         cooperadoName={coopFullData?.name || 'Cooperado'}
         cpf={selectedCpf}
         onGenerate={(selected) => {
+          const safeName = String(coopFullData?.name || 'COOPERADO').trim().toUpperCase().replace(/[/\\?%*:|"<>]/g, '_');
           setPdfModal({
             isOpen: true,
             url: `/api/easycoop/cooperados/${selectedCpf}/pdf/folha-lote?competencias=${encodeURIComponent(JSON.stringify(selected))}`,
             title: 'Demonstrativos de Produtividade em Lote',
             subtitle: `${selected.length} competências selecionadas • ${coopFullData?.name}`,
-            filename: `demonstrativos-${selectedCpf}-lote.pdf`,
+            filename: `${safeName}_DEM_PRODUTIVIDADE.pdf`,
           });
         }}
       />

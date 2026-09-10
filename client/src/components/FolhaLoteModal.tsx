@@ -38,31 +38,41 @@ export const FolhaLoteModal: React.FC<FolhaLoteModalProps> = ({
     return years.length > 0 ? years : [new Date().getFullYear()];
   }, [competencias]);
 
-  const [selectedYear, setSelectedYear] = useState<number>(availableYears[0] || new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number | "TODOS">(availableYears[0] || "TODOS");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   // Atualiza ano selecionado quando availableYears mudar
   useEffect(() => {
-    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+    if (selectedYear !== "TODOS" && availableYears.length > 0 && !availableYears.includes(selectedYear)) {
       setSelectedYear(availableYears[0]);
     }
   }, [availableYears, selectedYear]);
 
-  // Pré-seleciona todos os meses do ano atual ao abrir o modal
+  // Pré-seleciona meses do ano atual ou de todos os anos ao abrir o modal ou mudar o filtro
   useEffect(() => {
     if (isOpen && competencias.length > 0) {
-      const yearComp = competencias.filter((c) => Number(c.ano) === selectedYear);
-      const initialKeys = new Set(yearComp.map((c) => `${c.ano}_${c.mes}_${c.folha}`));
-      setSelectedKeys(initialKeys);
+      if (selectedYear === "TODOS") {
+        const initialKeys = new Set(competencias.map((c) => `${c.ano}_${c.mes}_${c.folha}`));
+        setSelectedKeys(initialKeys);
+      } else {
+        const yearComp = competencias.filter((c) => Number(c.ano) === selectedYear);
+        const initialKeys = new Set(yearComp.map((c) => `${c.ano}_${c.mes}_${c.folha}`));
+        setSelectedKeys(initialKeys);
+      }
     }
   }, [isOpen, selectedYear, competencias]);
 
   if (!isOpen) return null;
 
-  // Competências do ano selecionado
-  const compsOfYear = competencias
-    .filter((c) => Number(c.ano) === selectedYear)
-    .sort((a, b) => a.mes - b.mes);
+  // Competências do ano selecionado ou todas
+  const compsOfYear = selectedYear === "TODOS"
+    ? [...competencias].sort((a, b) => {
+        if (b.ano !== a.ano) return b.ano - a.ano;
+        return b.mes - a.mes;
+      })
+    : competencias
+        .filter((c) => Number(c.ano) === selectedYear)
+        .sort((a, b) => a.mes - b.mes);
 
   const toggleKey = (key: string) => {
     setSelectedKeys((prev) => {
@@ -149,6 +159,17 @@ export const FolhaLoteModal: React.FC<FolhaLoteModalProps> = ({
               <span>Selecione o Ano Base</span>
             </span>
             <div className="flex flex-wrap gap-2">
+              <button
+                key="todos"
+                onClick={() => setSelectedYear("TODOS")}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                  selectedYear === "TODOS"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                Todos os Anos
+              </button>
               {availableYears.map((ano) => (
                 <button
                   key={ano}
@@ -178,12 +199,20 @@ export const FolhaLoteModal: React.FC<FolhaLoteModalProps> = ({
                 {isAllYearSelected ? (
                   <>
                     <CheckSquare className="h-4 w-4" />
-                    <span>Desmarcar Todos do Ano {selectedYear}</span>
+                    <span>
+                      {selectedYear === "TODOS"
+                        ? "Desmarcar Todas as Competências"
+                        : `Desmarcar Todos do Ano ${selectedYear}`}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Square className="h-4 w-4" />
-                    <span>Selecionar Todos do Ano {selectedYear}</span>
+                    <span>
+                      {selectedYear === "TODOS"
+                        ? "Selecionar Todas as Competências"
+                        : `Selecionar Todos do Ano ${selectedYear}`}
+                    </span>
                   </>
                 )}
               </button>
@@ -191,7 +220,9 @@ export const FolhaLoteModal: React.FC<FolhaLoteModalProps> = ({
 
             {compsOfYear.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-slate-100">
-                Nenhuma folha de pagamento registrada para o ano {selectedYear}.
+                {selectedYear === "TODOS"
+                  ? "Nenhuma folha de pagamento registrada para o cooperado."
+                  : `Nenhuma folha de pagamento registrada para o ano ${selectedYear}.`}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">

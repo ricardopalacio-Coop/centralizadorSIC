@@ -116,32 +116,41 @@ export function fixMojibake(val: any): string {
   let s = String(val).trim();
   if (!s) return "";
 
-  // Se contém caracteres típicos de mojibake (como Ã seguido de outro caractere ou double dagger ‡)
-  if (/[ÃÂÁÉÍÓÚ]/i.test(s) || s.includes("‡")) {
-    try {
-      const bytes: number[] = [];
-      let isConvertible = true;
-      for (let i = 0; i < s.length; i++) {
-        const code = s.charCodeAt(i);
-        if (cp1252ReverseMap[code] !== undefined) {
-          bytes.push(cp1252ReverseMap[code]);
-        } else if (code <= 0xff) {
-          bytes.push(code);
-        } else {
-          isConvertible = false;
-          break;
+  // Iterar até 2 vezes se ainda houver caracteres típicos de mojibake (como Ã seguido de outro caractere, double dagger ‡ ou ƒ)
+  for (let pass = 0; pass < 2; pass++) {
+    if (/[ÃÂÁÉÍÓÚ]/i.test(s) || s.includes("‡") || s.includes("ƒ")) {
+      try {
+        const bytes: number[] = [];
+        let isConvertible = true;
+        for (let i = 0; i < s.length; i++) {
+          const code = s.charCodeAt(i);
+          if (cp1252ReverseMap[code] !== undefined) {
+            bytes.push(cp1252ReverseMap[code]);
+          } else if (code <= 0xff) {
+            bytes.push(code);
+          } else {
+            isConvertible = false;
+            break;
+          }
         }
-      }
-      if (isConvertible && bytes.length > 0) {
-        const decoded = Buffer.from(bytes).toString("utf8");
-        if (!decoded.includes("\ufffd") && decoded.length <= s.length) {
-          s = decoded;
+        if (isConvertible && bytes.length > 0) {
+          const decoded = Buffer.from(bytes).toString("utf8");
+          if (!decoded.includes("\ufffd") && decoded.length < s.length) {
+            s = decoded;
+            continue;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
+    break;
   }
 
-  return s;
+  // Tratamento de substituições conhecidas residuais
+  return s
+    .replace(/SÃ\s*O/gi, "SÃO")
+    .replace(/SÃfO/gi, "SÃO")
+    .replace(/SÃƒO/gi, "SÃO")
+    .replace(/SÃƑO/gi, "SÃO");
 }
 
 /**
@@ -757,13 +766,17 @@ export async function getEasycoopCooperadoFolha(
   const [fechamentos] = await pool.query<any[]>(query, params);
 
   // Lista de todas as competências disponíveis para o seletor da folha
-  const [competencias] = await pool.query<any[]>(
+  const [rawCompetencias] = await pool.query<any[]>(
     `SELECT DISTINCT ano, mes, folha, tomador, valor_liquido
      FROM easycoop_fechamentos
      WHERE document = ?
      ORDER BY ano DESC, mes DESC, folha DESC`,
     [numericCpf]
   );
+  const competencias = (rawCompetencias || []).map((cp) => ({
+    ...cp,
+    tomador: toUpperWithAccents(cp.tomador || "COOPEDU SEDE"),
+  }));
 
   if (fechamentos.length === 0) {
     return {
@@ -815,14 +828,14 @@ export async function getEasycoopCooperadoFolha(
       if (it.tipo === "C") {
         proventos.push({
           codigo: cod,
-          descricao: it.descricao,
+          descricao: toUpperWithAccents(it.descricao),
           ref: "-",
           valor: val,
         });
       } else {
         descontos.push({
           codigo: cod,
-          descricao: it.descricao,
+          descricao: toUpperWithAccents(it.descricao),
           ref: cod === "200" ? "11%" : "-",
           valor: val,
         });
@@ -868,14 +881,14 @@ export async function getEasycoopCooperadoFolha(
       mes: f.mes,
       folha: f.folha,
       competencia_str: `${String(f.mes).padStart(2, "0")}/${f.ano}`,
-      tomador: f.tomador || c.contract_name || "Coopedu Sede",
+      tomador: toUpperWithAccents(f.tomador || c.contract_name || "COOPEDU SEDE"),
       data_pagamento: f.data_pagamento_fmt || "-",
       comprovante_doc: f.comprovante_doc || "-",
       cooperado: {
-        nome: c.name,
+        nome: toUpperWithAccents(c.name),
         cpf: c.document,
         matricula: c.registration_number || f.matricula,
-        cargo: officialCargo,
+        cargo: toUpperWithAccents(officialCargo),
         banco: (c.bank_code === "770" || c.bank_code === "450" || c.bank_name?.includes("770") || c.bank_name?.toUpperCase().includes("FITBANK") || c.bank_name?.toUpperCase().includes("OWL"))
           ? "450 - BANCO OWL"
           : (c.bank_name || "Banco não informado"),
