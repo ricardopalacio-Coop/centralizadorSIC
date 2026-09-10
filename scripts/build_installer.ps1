@@ -59,11 +59,11 @@ if (Test-Path $InstallerPath) {
     $sizeMb = [Math]::Round($fileItem.Length / 1MB, 2)
     Write-Host ""
     Write-Host "=======================================================================" -ForegroundColor Cyan
-    Write-Host " 🎉 INSTALADOR WINDOWS GERADO COM SUCESSO!" -ForegroundColor Green
-    Write-Host " 📂 Arquivo: $InstallerPath" -ForegroundColor White
-    Write-Host " 📊 Tamanho: $sizeMb MB" -ForegroundColor White
-    Write-Host " 🕒 Ultima modificacao: $($fileItem.LastWriteTime)" -ForegroundColor White
+    Write-Host "[SUCESSO] INSTALADOR WINDOWS GERADO COM SUCESSO!" -ForegroundColor Green
+    Write-Host " Arquivo: $InstallerPath" -ForegroundColor White
+    Write-Host " Tamanho: $sizeMb MB" -ForegroundColor White
+    Write-Host " Ultima modificacao: $($fileItem.LastWriteTime)" -ForegroundColor White
     Write-Host "=======================================================================" -ForegroundColor Cyan
 } else {
-    Write-Host "⚠️ Instalador nao foi encontrado no destino esperado: $InstallerPath" -ForegroundColor Yellow
+    Write-Host "[AVISO] Instalador nao foi encontrado no destino esperado: $InstallerPath" -ForegroundColor Yellow
 }

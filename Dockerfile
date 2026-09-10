@@ -57,7 +57,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependências de produção e dev para build
-RUN npm install
+RUN npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 # Copiar código fonte
 COPY . .
