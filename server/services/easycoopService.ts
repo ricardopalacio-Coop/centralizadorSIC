@@ -1324,7 +1324,7 @@ export async function getEasycoopFolhasPeriodo(
       query += " AND mes = ?";
       params.push(mes);
     }
-    query += " ORDER BY ano DESC, mes DESC, folha DESC LIMIT 36";
+    query += " ORDER BY ano DESC, mes DESC, folha DESC";
     const [dbRows] = await pool.query<any[]>(query, params);
     rows = dbRows;
   }

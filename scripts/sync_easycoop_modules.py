@@ -50,7 +50,7 @@ def run_mssql_query(sql):
     cmd = [
         "docker", "exec", "mssql_coopedu",
         "/opt/mssql-tools18/bin/sqlcmd",
-        "-S", "localhost",
+        "-S", "127.0.0.1,1433",
         "-d", "COOP01",
         "-U", "sa",
         "-P", "Coopedu@2026!Sql",
@@ -414,7 +414,6 @@ def sync_modules():
     FROM LANCAMEN l
     INNER JOIN COOPERAD c ON l.COD_COOPERADO = c.COD_COOPERADO
     LEFT JOIN CLIENTE cli ON l.COD_CLIENTE = cli.COD_CLIENTE
-    WHERE l.ANO >= 2023
     """
     rows = run_mssql_query(sql_fech)
     fech_batch = []

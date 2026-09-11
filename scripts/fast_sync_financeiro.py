@@ -69,7 +69,7 @@ def run_sqlcmd_stream(sql):
     cmd = [
         "docker", "exec", "mssql_coopedu",
         "/opt/mssql-tools18/bin/sqlcmd",
-        "-S", "localhost",
+        "-S", "127.0.0.1,1433",
         "-d", "COOP01",
         "-U", "sa",
         "-P", "Coopedu@2026!Sql",
@@ -95,8 +95,7 @@ SELECT
     ISNULL(l.VLR_DEBITO, 0),
     ISNULL(l.VLR_TOT_LIQ, 0)
 FROM LANCAMEN l
-INNER JOIN COOPERAD c ON l.COD_COOPERADO = c.COD_COOPERADO
-WHERE l.ANO >= 2023;
+INNER JOIN COOPERAD c ON l.COD_COOPERADO = c.COD_COOPERADO;
 """
 
 p_fech = run_sqlcmd_stream(sql_fech)
@@ -170,7 +169,7 @@ SELECT
     ISNULL(li.VLR_LANCAMENTO, 0)
 FROM LANCAMIT li
 INNER JOIN COOPERAD c ON li.COD_COOPERADO = c.COD_COOPERADO
-WHERE li.ANO >= 2024 AND li.VLR_LANCAMENTO > 0;
+WHERE li.VLR_LANCAMENTO > 0;
 """
 
 p_itens = run_sqlcmd_stream(sql_itens)
