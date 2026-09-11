@@ -1403,6 +1403,19 @@ export function generateEasycoopLancamentosPdf(coop: any, lancamentos: any[]): P
 /**
  * 4. Gera PDF em Lote de Demonstrativos de Produtividade (Folha de Pagamento)
  */
+/**
+ * Formata valor numérico para padrão decimal brasileiro (ex: 651,00)
+ */
+function formatPtBrDecimal(val?: number | string | null): string {
+  if (val === undefined || val === null || val === "") return "0,00";
+  const n = Number(val);
+  if (isNaN(n)) return "0,00";
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * 4. Gera PDF de Demonstrativos de Produtividade (Contracheque oficial idêntico à Imagem 2)
+ */
 export function generateEasycoopFolhaLotePdf(coop: any, folhasList: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -1413,19 +1426,11 @@ export function generateEasycoopFolhaLotePdf(coop: any, folhasList: any[]): Prom
       doc.on("end", () => resolve(Buffer.concat(buffers)));
       doc.on("error", (err) => reject(err));
 
-      const primary = "#0284c7";
-      const darkText = "#0f172a";
-      const grayBorder = "#cbd5e1";
-
       if (folhasList.length === 0) {
-        drawCoopeduHeader(doc, "DEMONSTRATIVO DE PRODUTIVIDADE E REPASSE", "Consulta de Folha de Pagamento", { hideEmissionDate: true });
-        doc.rect(35, 95, 525, 60).fillAndStroke("#f8fafc", "#e2e8f0");
-        doc.fillColor(darkText).fontSize(8);
-        doc.font("Helvetica-Bold").text("Cooperado:", 45, 110);
-        doc.font("Helvetica").text(toUpperWithAccents(coop?.name || "N/I"), 110, 110);
-        doc.font("Helvetica-Bold").text("CPF:", 360, 110);
-        doc.font("Helvetica").text(formatCpf(coop?.document), 400, 110);
-        doc.fillColor("#64748b").fontSize(9).font("Helvetica").text("Nenhum demonstrativo de folha encontrado para as competências solicitadas.", 35, 185, { align: "center", width: 525 });
+        doc.rect(35, 40, 525, 60).strokeColor("#000000").lineWidth(0.8).stroke();
+        doc.fillColor("#000000").fontSize(9).font("Helvetica-Bold").text("DEMONSTRATIVO DE PRODUTIVIDADE", 45, 55);
+        doc.font("Helvetica").fontSize(8).text(`Cooperado: ${toUpperWithAccents(coop?.name || "N/I")} • CPF: ${formatCpf(coop?.document)}`, 45, 72);
+        doc.fillColor("#64748b").fontSize(8).text("Nenhum demonstrativo de folha encontrado para as competências solicitadas.", 45, 87);
         doc.end();
         return;
       }
@@ -1434,172 +1439,306 @@ export function generateEasycoopFolhaLotePdf(coop: any, folhasList: any[]): Prom
         if (pageIdx > 0) doc.addPage();
 
         const folha = (typeof item.folha === "object" && item.folha !== null) ? item.folha : item;
-        const compStr = folha.competencia_str || (folha.mes && folha.ano ? `${String(folha.mes).padStart(2, "0")}/${folha.ano}` : "Geral");
+        const compStr = folha.competencia_rotulo || (folha.mes && folha.ano ? `${String(folha.mes).padStart(2, "0")} / ${folha.ano} - Folha : ${String(folha.folha || 1).padStart(2, "0")}` : "02 / 2023 - Folha : 01");
 
-        // Cabeçalho institucional com supressão da linha de emissão
-        drawCoopeduHeader(doc, "DEMONSTRATIVO DE PRODUTIVIDADE E REPASSE", `Competência: ${compStr}`, { hideEmissionDate: true });
+        const cooperativa = folha.cooperativa || {
+          razao_social: "COOP TRAB PROF DA EDUCACAO DO ESTADO RIO G NORTE",
+          cnpj: "35.537.126/0001-84",
+          endereco: "RUA PROJETADA, N 1",
+          cidade: "MONTE ALEGRE",
+          uf: "RN",
+          telefone: "(84) 98156-1479",
+        };
 
-        let y = 90;
+        const cooperado = folha.cooperado || {};
+        const nomeCooperado = toUpperWithAccents(coop?.name || cooperado.nome || "COOPERADO");
+        const cpfCooperado = formatCpf(coop?.document || cooperado.cpf);
+        const matriculaCooperado = String(cooperado.matricula || coop?.registration_number || folha.matricula || "00002700").padStart(8, "0");
+        const atividadeCooperado = toUpperWithAccents(cooperado.cargo || coop?.cargo_contrato || coop?.position || "ASG 20 HORAS");
 
-        // IDENTIFICAÇÃO DO COOPERADO E CONTRATO (LAYOUT EXECUTIVO)
-        doc.rect(35, y, 525, 54).fillAndStroke("#f8fafc", grayBorder);
+        const bancoSigla = cooperado.banco_sigla || "BB";
+        const agencia = cooperado.agencia || "1140";
+        const agenciaDig = cooperado.agencia_digito || "";
+        const conta = cooperado.conta || "26725";
+        const contaDig = cooperado.conta_digito || "2";
 
-        // Linha 1
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("COOPERADO:", 45, y + 9);
-        doc.fillColor(darkText).fontSize(8.5).font("Helvetica-Bold").text(
-          toUpperWithAccents(coop?.name || folha.cooperado?.nome || "N/I"),
-          115,
-          y + 9,
-          { width: 235, ellipsis: true }
-        );
-
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("CPF:", 365, y + 9);
-        doc.fillColor(darkText).fontSize(8.5).font("Helvetica").text(
-          formatCpf(coop?.document || folha.cooperado?.cpf),
-          400,
-          y + 9
-        );
-
-        // Divisor interno sutil
-        doc.moveTo(45, y + 27).lineTo(550, y + 27).strokeColor("#e2e8f0").lineWidth(0.8).stroke();
-
-        // Linha 2
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("ATIVIDADE / CARGO:", 45, y + 35);
-        doc.fillColor(primary).fontSize(8).font("Helvetica-Bold").text(
-          toUpperWithAccents(coop?.cargo_contrato || folha.cooperado?.cargo || "Cooperado"),
-          145,
-          y + 35,
-          { width: 205, ellipsis: true }
-        );
-
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("TOMADOR / CLIENTE:", 365, y + 35);
-        doc.fillColor(darkText).fontSize(8).font("Helvetica-Bold").text(
-          toUpperWithAccents(folha.tomador || "COOPEDU SEDE"),
-          465,
-          y + 35,
-          { width: 90, ellipsis: true }
-        );
-
-        y += 66;
-
-        // PROVENTOS (+) E DESCONTOS (-) COM TABELAS EQUILIBRADAS
-        const colWidth = 255;
-        const leftX = 35;
-        const rightX = 305;
-
-        // Cabeçalhos das tabelas
-        doc.rect(leftX, y, colWidth, 20).fillAndStroke("#f0fdf4", "#86efac");
-        doc.fillColor("#166534").fontSize(7.5).font("Helvetica-Bold").text("PROVENTOS / CRÉDITOS (+)", leftX + 8, y + 6);
-        doc.text("VALOR (R$)", leftX + 175, y + 6, { width: 72, align: "right" });
-
-        doc.rect(rightX, y, colWidth, 20).fillAndStroke("#fef2f2", "#fca5a5");
-        doc.fillColor("#991b1b").fontSize(7.5).font("Helvetica-Bold").text("DESCONTOS / RETENÇÕES (-)", rightX + 8, y + 6);
-        doc.text("VALOR (R$)", rightX + 175, y + 6, { width: 72, align: "right" });
-
-        y += 20;
-        const startTablesY = y;
-
-        // Proventos (com fallback para totais se vazio)
-        const proventos = [...(folha.proventos || [])];
-        const totProv = Number(folha.totais?.totalProventos || folha.valor_bruto || 0);
-        if (proventos.length === 0 && totProv > 0) {
-          proventos.push({ codigo: "101", descricao: "PRODUÇÃO COOPERATIVA / HORAS", valor: totProv });
+        // Rubricas combinadas e ordenadas (Proventos e Descontos)
+        let rubricas: any[] = [];
+        if (Array.isArray(folha.itens) && folha.itens.length > 0) {
+          rubricas = folha.itens;
+        } else {
+          const provs = folha.proventos || [];
+          const descs = folha.descontos || [];
+          rubricas = [...provs, ...descs];
         }
 
-        // Descontos (com fallback para totais se vazio)
-        const descontos = [...(folha.descontos || [])];
-        const totDesc = Number(folha.totais?.totalDescontos || folha.total_descontos || 0);
-        if (descontos.length === 0 && totDesc > 0) {
-          descontos.push({ codigo: "201", descricao: "RETENÇÕES / DEDUÇÕES LEGAIS", valor: totDesc });
-        }
+        // Totais e bases
+        const totalVenc = Number(folha.totais?.totalVencimentos ?? folha.totais?.totalProventos ?? folha.valor_bruto ?? 0);
+        const totalDesc = Number(folha.totais?.totalDescontos ?? folha.total_descontos ?? 0);
+        const totLiq = Number(folha.totais?.valorLiquido ?? (totalVenc - totalDesc));
 
-        const maxRows = Math.max(proventos.length, descontos.length, 4);
-        let provY = startTablesY;
-        let descY = startTablesY;
+        const baseProdutividade = Number(folha.bases_calculo?.produtividade ?? totalVenc);
+        const baseInss = Number(folha.bases_calculo?.baseInss ?? baseProdutividade);
+        const baseIrrf = Number(folha.bases_calculo?.baseIrrf ?? Math.max(0, baseInss - (folha.inss || 0)));
+        const nroDepIrrf = String(folha.bases_calculo?.nroDepIrrf ?? "00");
+        const valorIrrfDep = Number(folha.bases_calculo?.valorIrrfDep ?? 0);
 
-        for (let i = 0; i < maxRows; i++) {
-          const isEven = i % 2 === 0;
-          const p = proventos[i];
-          const d = descontos[i];
+        // COORDENADAS E MEDIDAS DO CONTRACHEQUE (IMAGEM 2)
+        const startX = 35;
+        const boxWidth = 525;
+        const endX = startX + boxWidth; // 560
+        const startY = 35;
 
-          // Linha de Provento
-          doc.rect(leftX, provY, colWidth, 18).fillAndStroke(isEven ? "#ffffff" : "#f8fafc", "#f1f5f9");
-          if (p) {
-            doc.fillColor(darkText).fontSize(7.2).font("Helvetica").text(toUpperWithAccents(p.descricao), leftX + 8, provY + 5, { width: 165, ellipsis: true });
-            doc.fillColor("#15803d").font("Helvetica-Bold").text(formatCurrency(p.valor), leftX + 175, provY + 5, { width: 72, align: "right" });
+        doc.strokeColor("#000000").lineWidth(0.8);
+
+        // 1. CABEÇALHO SUPERIOR (Y = 35 a 78)
+        doc.fillColor("#000000").fontSize(9).font("Helvetica-Bold");
+        doc.text("DEMONSTRATIVO DE PRODUTIVIDADE", startX, startY + 6, { width: boxWidth - 8, align: "right" });
+
+        doc.fontSize(8).font("Helvetica-Bold").text(cooperativa.razao_social, startX + 8, startY + 20);
+        doc.fontSize(7.5).font("Helvetica").text(`C.N.P.J ${cooperativa.cnpj}`, startX, startY + 20, { width: boxWidth - 8, align: "right" });
+
+        doc.fontSize(7.5).font("Helvetica").text(cooperativa.endereco, startX + 8, startY + 31);
+        doc.text(cooperativa.cidade, startX + 180, startY + 31);
+        doc.text(`${cooperativa.uf} ${cooperativa.telefone}`, startX, startY + 31, { width: boxWidth - 8, align: "right" });
+
+        // Linha divisória após cabeçalho institucional
+        const coopY = startY + 42;
+        doc.moveTo(startX, coopY).lineTo(endX, coopY).stroke();
+
+        // 2. QUADRO DO COOPERADO (Y = 77 a 115)
+        const coopMidY = coopY + 18;
+        const coopBottomY = coopY + 36;
+
+        // Linha interna divisória horizontal
+        doc.moveTo(startX, coopMidY).lineTo(endX, coopMidY).stroke();
+
+        // Linhas verticais do bloco do cooperado
+        doc.moveTo(startX + 65, coopY).lineTo(startX + 65, coopBottomY).stroke(); // Matrícula
+        doc.moveTo(startX + 375, coopY).lineTo(startX + 375, coopBottomY).stroke(); // Nome / Atividade / CPF
+        doc.moveTo(startX + 445, coopMidY).lineTo(startX + 445, coopBottomY).stroke(); // Divisor CPF / Competência
+
+        // Linha 1 do Cooperado
+        doc.fontSize(6.5).font("Helvetica").text("Matrícula", startX + 4, coopY + 3);
+        doc.fontSize(8.5).font("Helvetica-Bold").text(matriculaCooperado, startX + 4, coopY + 10);
+
+        doc.fontSize(6.5).font("Helvetica").text("Nome do Associado - Cooperado", startX + 70, coopY + 3);
+        doc.fontSize(8.5).font("Helvetica-Bold").text(nomeCooperado, startX + 70, coopY + 10, { width: 300, ellipsis: true });
+
+        doc.fontSize(6.5).font("Helvetica").text("Atividade Profissional", startX + 380, coopY + 3);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(atividadeCooperado, startX + 380, coopY + 10, { width: 140, ellipsis: true });
+
+        // Linha 2 do Cooperado
+        doc.fontSize(6.5).font("Helvetica").text("CPF", startX + 380, coopMidY + 3);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(cpfCooperado, startX + 380, coopMidY + 10);
+
+        doc.fontSize(6.5).font("Helvetica").text("Competência", startX + 450, coopMidY + 3);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(compStr, startX + 450, coopMidY + 10);
+
+        // Linha divisória antes da tabela
+        doc.moveTo(startX, coopBottomY).lineTo(endX, coopBottomY).stroke();
+
+        // 3. TABELA DE RUBRICAS / PRODUTIVIDADE
+        const tblHeadY = coopBottomY;
+        const tblHeadMidY = tblHeadY + 11;
+        const tblRowsStartY = tblHeadY + 22;
+
+        // Sub-cabeçalho horizontal para Vencimentos e Descontos
+        doc.moveTo(startX + 325, tblHeadMidY).lineTo(endX, tblHeadMidY).stroke();
+
+        // Cabeçalhos principais
+        doc.fontSize(6.5).font("Helvetica").text("Cód.", startX + 4, tblHeadY + 8);
+        doc.text("Descrição da Produtividade", startX + 40, tblHeadY + 8);
+        doc.text("Referência", startX + 270, tblHeadY + 8, { width: 50, align: "right" });
+
+        doc.text("Vencimentos", startX + 325, tblHeadY + 3, { width: 110, align: "center" });
+        doc.text("Atual", startX + 325, tblHeadMidY + 3, { width: 50, align: "right" });
+        doc.text("Acumulado", startX + 380, tblHeadMidY + 3, { width: 50, align: "right" });
+
+        doc.text("Descontos", startX + 435, tblHeadY + 3, { width: 90, align: "center" });
+        doc.text("Atual", startX + 435, tblHeadMidY + 3, { width: 42, align: "right" });
+        doc.text("Acumulado", startX + 480, tblHeadMidY + 3, { width: 42, align: "right" });
+
+        // Linha divisória inferior do cabeçalho da tabela
+        doc.moveTo(startX, tblRowsStartY).lineTo(endX, tblRowsStartY).stroke();
+
+        // 12 linhas padronizadas de altura uniforme
+        const rowHeight = 13.5;
+        const totalRows = Math.max(rubricas.length, 10);
+        const tblBottomY = tblRowsStartY + (totalRows * rowHeight);
+
+        // Linhas verticais da tabela estendidas até tblBottomY
+        const colCodX = startX + 35;
+        const colDescX = startX + 265;
+        const colRefX = startX + 325;
+        const colVencAtualX = startX + 380;
+        const colVencAcumX = startX + 435;
+        const colDescAtualX = startX + 480;
+
+        doc.moveTo(colCodX, tblHeadY).lineTo(colCodX, tblBottomY).stroke();
+        doc.moveTo(colDescX, tblHeadY).lineTo(colDescX, tblBottomY).stroke();
+        doc.moveTo(colRefX, tblHeadY).lineTo(colRefX, tblBottomY).stroke();
+        doc.moveTo(colVencAtualX, tblHeadMidY).lineTo(colVencAtualX, tblBottomY).stroke();
+        doc.moveTo(colVencAcumX, tblHeadY).lineTo(colVencAcumX, tblBottomY).stroke();
+        doc.moveTo(colDescAtualX, tblHeadMidY).lineTo(colDescAtualX, tblBottomY).stroke();
+
+        // Preenchimento dos dados das linhas
+        for (let rIdx = 0; rIdx < totalRows; rIdx++) {
+          const rowY = tblRowsStartY + (rIdx * rowHeight);
+          const it = rubricas[rIdx];
+
+          if (it) {
+            const isDesconto = it.tipo === "D" || String(it.tipo).toUpperCase() === "D";
+            const codStr = it.codigo ? String(it.codigo).padStart(4, "0") : (isDesconto ? "0200" : "0100");
+            const refStr = it.referencia || (codStr === "0200" || it.descricao.includes("INSS") ? "0,00" : "1,00");
+            const valNum = Number(it.valor || 0);
+            const valStr = formatPtBrDecimal(valNum);
+
+            doc.fontSize(7).font("Helvetica");
+            doc.text(codStr, startX + 4, rowY + 3);
+            doc.text(toUpperWithAccents(it.descricao), startX + 38, rowY + 3, { width: 224, ellipsis: true });
+            doc.text(refStr, startX + 270, rowY + 3, { width: 50, align: "right" });
+
+            if (!isDesconto) {
+              doc.text(valStr, startX + 325, rowY + 3, { width: 50, align: "right" });
+              doc.text(valStr, startX + 380, rowY + 3, { width: 50, align: "right" });
+            } else {
+              doc.text(valStr, startX + 435, rowY + 3, { width: 42, align: "right" });
+              doc.text(valStr, startX + 480, rowY + 3, { width: 42, align: "right" });
+            }
           }
-          provY += 18;
-
-          // Linha de Desconto
-          doc.rect(rightX, descY, colWidth, 18).fillAndStroke(isEven ? "#ffffff" : "#f8fafc", "#f1f5f9");
-          if (d) {
-            doc.fillColor(darkText).fontSize(7.2).font("Helvetica").text(toUpperWithAccents(d.descricao), rightX + 8, descY + 5, { width: 165, ellipsis: true });
-            doc.fillColor("#dc2626").font("Helvetica-Bold").text(formatCurrency(d.valor), rightX + 175, descY + 5, { width: 72, align: "right" });
-          }
-          descY += 18;
         }
 
-        y = Math.max(provY, descY) + 16;
+        // Linha divisória após a grade de rubricas
+        doc.moveTo(startX, tblBottomY).lineTo(endX, tblBottomY).stroke();
 
-        // TOTAIS EXECUTIVOS
-        const totLiq = Number(folha.totais?.valorLiquido || (totProv - totDesc));
+        // 4. SEÇÃO DE DADOS BANCÁRIOS E TOTAIS (VENCIMENTOS / DESCONTOS)
+        const bankRowY = tblBottomY;
+        const bankRowBottomY = bankRowY + 24;
 
-        // Card Total Proventos
-        doc.rect(35, y, 165, 46).fillAndStroke("#ffffff", "#e2e8f0");
-        doc.fillColor("#64748b").fontSize(6.8).font("Helvetica-Bold").text("TOTAL DE PROVENTOS", 45, y + 9);
-        doc.fillColor(darkText).fontSize(12).font("Helvetica-Bold").text(formatCurrency(totProv), 45, y + 23);
+        // Divisórias da linha bancária
+        const bankAgX = startX + 75;
+        const bankAgDigX = startX + 130;
+        const bankContaX = startX + 160;
+        const bankContaDigX = startX + 225;
+        const bankEndX = colRefX; // 360
 
-        // Card Total Descontos
-        doc.rect(215, y, 165, 46).fillAndStroke("#fef2f2", "#fee2e2");
-        doc.fillColor("#991b1b").fontSize(6.8).font("Helvetica-Bold").text("TOTAL DE DESCONTOS", 225, y + 9);
-        doc.fillColor("#b91c1c").fontSize(12).font("Helvetica-Bold").text(`- ${formatCurrency(totDesc)}`, 225, y + 23);
+        doc.moveTo(bankAgX, bankRowY).lineTo(bankAgX, bankRowBottomY).stroke();
+        doc.moveTo(bankAgDigX, bankRowY).lineTo(bankAgDigX, bankRowBottomY).stroke();
+        doc.moveTo(bankContaX, bankRowY).lineTo(bankContaX, bankRowBottomY).stroke();
+        doc.moveTo(bankContaDigX, bankRowY).lineTo(bankContaDigX, bankRowBottomY).stroke();
+        doc.moveTo(bankEndX, bankRowY).lineTo(bankEndX, bankRowBottomY).stroke();
+        doc.moveTo(colVencAcumX, bankRowY).lineTo(colVencAcumX, bankRowBottomY).stroke();
 
-        // Card Valor Líquido
-        doc.rect(395, y, 165, 46).fillAndStroke("#f0fdf4", "#86efac");
-        doc.fillColor("#166534").fontSize(7.2).font("Helvetica-Bold").text("VALOR LÍQUIDO A RECEBER", 405, y + 9);
-        doc.fillColor("#15803d").fontSize(13).font("Helvetica-Bold").text(formatCurrency(totLiq), 405, y + 23);
+        // Células bancárias
+        doc.fontSize(6.5).font("Helvetica").text("Banco :", startX + 4, bankRowY + 8);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(bancoSigla, startX + 35, bankRowY + 8);
 
-        y += 62;
+        doc.fontSize(6.5).font("Helvetica").text("Agência :", bankAgX + 4, bankRowY + 8);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(agencia, bankAgX + 32, bankRowY + 8);
 
-        // DADOS BANCÁRIOS (OWL) E BASES (SEM DATA DE PAGAMENTO)
-        doc.rect(35, y, 525, 38).fillAndStroke("#f8fafc", "#e2e8f0");
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("BASE INSS:", 45, y + 14);
-        doc.fillColor(darkText).fontSize(8).font("Helvetica").text(formatCurrency(folha.bases_calculo?.baseInss || totProv), 102, y + 14);
+        doc.fontSize(6.5).font("Helvetica").text("Díg.", bankAgDigX + 3, bankRowY + 8);
+        if (agenciaDig) doc.fontSize(7.5).font("Helvetica-Bold").text(agenciaDig, bankAgDigX + 16, bankRowY + 8);
 
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("BASE IRRF:", 175, y + 14);
-        doc.fillColor(darkText).fontSize(8).font("Helvetica").text(formatCurrency(folha.bases_calculo?.baseIrrf || 0), 232, y + 14);
+        doc.fontSize(6.5).font("Helvetica").text("Conta :", bankContaX + 4, bankRowY + 8);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(conta, bankContaX + 28, bankRowY + 8);
 
-        const bank = resolveOwlBank(coop?.bank_code || folha.cooperado?.banco, coop?.bank_name || folha.cooperado?.banco);
-        doc.fillColor("#64748b").fontSize(7).font("Helvetica-Bold").text("DEPÓSITO EM CONTA:", 305, y + 14);
-        doc.fillColor("#047857").fontSize(8).font("Helvetica-Bold").text(
-          `${bank.name} • Ag: ${coop?.agency || folha.cooperado?.agencia || "0001"} • CC: ${coop?.account_number || folha.cooperado?.conta || "-"}-${coop?.account_digit || ""}`,
-          405,
-          y + 14,
-          { width: 150, ellipsis: true }
+        doc.fontSize(6.5).font("Helvetica").text("Díg.", bankContaDigX + 3, bankRowY + 8);
+        doc.fontSize(7.5).font("Helvetica-Bold").text(contaDig, bankContaDigX + 16, bankRowY + 8);
+
+        // Células Totais (Vencimentos / Descontos)
+        doc.fontSize(6.5).font("Helvetica").text("Total de Vencimentos", bankEndX + 4, bankRowY + 3);
+        doc.fontSize(8.5).font("Helvetica-Bold").text(formatPtBrDecimal(totalVenc), bankEndX + 4, bankRowY + 12, { width: 100, align: "right" });
+
+        doc.fontSize(6.5).font("Helvetica").text("Total de Descontos", colVencAcumX + 4, bankRowY + 3);
+        doc.fontSize(8.5).font("Helvetica-Bold").text(formatPtBrDecimal(totalDesc), colVencAcumX + 4, bankRowY + 12, { width: 80, align: "right" });
+
+        // Linha divisória após Totais
+        doc.moveTo(startX, bankRowBottomY).lineTo(endX, bankRowBottomY).stroke();
+
+        // 5. SEÇÃO DE BASES FISCAIS E TOTAL LÍQUIDO ==>
+        const basesRowY = bankRowBottomY;
+        const basesRowBottomY = basesRowY + 24;
+
+        const baseB1 = startX + 70;
+        const baseB2 = startX + 140;
+        const baseB3 = startX + 190;
+        const baseB4 = startX + 250;
+        const baseB5 = colRefX; // 360
+
+        doc.moveTo(baseB1, basesRowY).lineTo(baseB1, basesRowBottomY).stroke();
+        doc.moveTo(baseB2, basesRowY).lineTo(baseB2, basesRowBottomY).stroke();
+        doc.moveTo(baseB3, basesRowY).lineTo(baseB3, basesRowBottomY).stroke();
+        doc.moveTo(baseB4, basesRowY).lineTo(baseB4, basesRowBottomY).stroke();
+        doc.moveTo(baseB5, basesRowY).lineTo(baseB5, basesRowBottomY).stroke();
+
+        // 5.1 Produtividade
+        doc.fontSize(6).font("Helvetica").text("Produtividade", startX + 4, basesRowY + 3);
+        doc.fontSize(7.5).font("Helvetica").text(formatPtBrDecimal(baseProdutividade), startX + 4, basesRowY + 12, { width: 62, align: "right" });
+
+        // 5.2 Base Cálc. IRRF
+        doc.fontSize(6).font("Helvetica").text("Base Cálc. IRRF", baseB1 + 4, basesRowY + 3);
+        doc.fontSize(7.5).font("Helvetica").text(formatPtBrDecimal(baseIrrf), baseB1 + 4, basesRowY + 12, { width: 62, align: "right" });
+
+        // 5.3 Nro. Dep. IRRF
+        doc.fontSize(6).font("Helvetica").text("Nro. Dep. IRRF", baseB2 + 2, basesRowY + 3);
+        doc.fontSize(7.5).font("Helvetica").text(nroDepIrrf, baseB2 + 2, basesRowY + 12, { width: 46, align: "center" });
+
+        // 5.4 Valor IRRF/Dep.
+        doc.fontSize(6).font("Helvetica").text("Valor IRRF/Dep.", baseB3 + 2, basesRowY + 3);
+        doc.fontSize(7.5).font("Helvetica").text(formatPtBrDecimal(valorIrrfDep), baseB3 + 2, basesRowY + 12, { width: 54, align: "right" });
+
+        // 5.5 Base Cálc. INSS
+        doc.fontSize(6).font("Helvetica").text("Base Cálc. INSS", baseB4 + 4, basesRowY + 3);
+        doc.fontSize(7.5).font("Helvetica").text(formatPtBrDecimal(baseInss), baseB4 + 4, basesRowY + 12, { width: 66, align: "right" });
+
+        // 5.6 TOTAL LÍQUIDO ==>
+        doc.fontSize(7.5).font("Helvetica-Bold").text("TOTAL LÍQUIDO ==>", baseB5 + 6, basesRowY + 8);
+        doc.fontSize(10).font("Helvetica-Bold").text(formatPtBrDecimal(totLiq), baseB5 + 50, basesRowY + 7, { width: 140, align: "right" });
+
+        // Linha divisória após Bases
+        doc.moveTo(startX, basesRowBottomY).lineTo(endX, basesRowBottomY).stroke();
+
+        // 6. CANHOTO DE QUITAÇÃO E ASSINATURA (Y = basesRowBottomY a receiptBottomY)
+        const receiptRowY = basesRowBottomY;
+        const receiptBottomY = receiptRowY + 34;
+
+        // Divisória vertical separando área esquerda da área de recibo
+        const receiptSplitX = startX + 230;
+        doc.moveTo(receiptSplitX, receiptRowY).lineTo(receiptSplitX, receiptBottomY).stroke();
+
+        doc.fontSize(6.5).font("Helvetica").text(
+          "Declaro ter recebido a importancia liquida acima descriminada, dando total quitacao",
+          receiptSplitX + 6,
+          receiptRowY + 4,
+          { width: boxWidth - 236 }
         );
 
-        y += 72;
+        doc.fontSize(7).font("Helvetica").text("Data : _____/_____/_________", receiptSplitX + 6, receiptRowY + 20);
+        doc.text("Assinatura : __________________________________________", receiptSplitX + 115, receiptRowY + 20);
 
-        // TERMO DE QUITAÇÃO E ASSINATURA
-        doc.fillColor("#475569").fontSize(7.8).font("Helvetica").text(
-          "Declaro ter recebido a importância líquida discriminada neste demonstrativo, referente à produção cooperativa.",
-          35,
-          y,
-          { width: 525, align: "center" }
-        );
+        // Linha de fechamento inferior da moldura
+        doc.moveTo(startX, receiptBottomY).lineTo(endX, receiptBottomY).stroke();
 
-        y += 48;
-        doc.fillColor(darkText).fontSize(8).font("Helvetica");
-        doc.text("Data: _____/_____/_________", 45, y);
-        doc.text("Assinatura do Cooperado: ___________________________________________________________", 160, y);
+        // Contorno externo completo (retângulo sólido da moldura)
+        doc.rect(startX, startY, boxWidth, receiptBottomY - startY).stroke();
 
-        // Rodapé Institucional
-        doc.fillColor("#94a3b8").fontSize(6.5).font("Helvetica").text(
-          `Demonstrativo Oficial de Produtividade • Centralizador SIC (Core Coopedu) • Folha ${pageIdx + 1} de ${folhasList.length}`,
-          35,
-          785,
-          { align: "center", width: 525 }
-        );
+        // 7. LINHA DE PICOTE COM ÍCONE VETORIAL DE TESOURA ✂
+        const cutY = receiptBottomY + 12;
+        doc.save();
+        doc.strokeColor("#000000").lineWidth(0.7);
+
+        // Desenho vetorial da tesoura
+        doc.circle(startX + 4, cutY + 1, 2.2).stroke();
+        doc.circle(startX + 4, cutY + 7, 2.2).stroke();
+        doc.moveTo(startX + 6, cutY + 2).lineTo(startX + 15, cutY + 7.5).stroke();
+        doc.moveTo(startX + 6, cutY + 6).lineTo(startX + 15, cutY + 0.5).stroke();
+
+        // Linha pontilhada / tracejada
+        doc.dash(4, { space: 3 });
+        doc.moveTo(startX + 20, cutY + 4).lineTo(endX, cutY + 4).stroke();
+        doc.undash();
+        doc.restore();
       });
 
       doc.end();
@@ -1608,6 +1747,7 @@ export function generateEasycoopFolhaLotePdf(coop: any, folhasList: any[]): Prom
     }
   });
 }
+
 
 /**
  * 5. Gera PDF dos Eventos Selecionados do e-Social (EasyCoop)

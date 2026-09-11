@@ -99,6 +99,16 @@ function calcularTempoCooperativa(dtAdmissao?: string | null, dtDesligamento?: s
   }
 }
 
+/**
+ * Formata CPF para o padrão 000.000.000-00
+ */
+export function formatCpf(val?: string | null): string {
+  if (!val) return "000.000.000-00";
+  const digits = String(val).replace(/\D/g, "");
+  if (digits.length !== 11) return String(val);
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
 // Tabela de reversão de caracteres CP1252 (0x80 - 0x9F) mapeados indevidamente em UTF-8
 const cp1252ReverseMap: Record<number, number> = {
   0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87,
@@ -809,9 +819,20 @@ export async function getEasycoopCooperadoFolha(
   );
   const officialCargo = alocRows[0]?.cargo || c.position || "Cooperado";
 
-  // 3. Proventos e Descontos estruturados a partir das rubricas oficiais (easycoop_lancamento_itens)
+  // 3. Dependentes de IRRF
+  let totalDependentes = 0;
+  try {
+    const [depRows] = await pool.query<any[]>(
+      "SELECT COUNT(*) AS cnt FROM easycoop_dependentes WHERE document = ? AND (deduz_irrf = 'S' OR deduz_irrf = '1' OR deduz_irrf IS NULL)",
+      [numericCpf]
+    );
+    totalDependentes = Number(depRows[0]?.cnt || 0);
+  } catch {}
+
+  // 4. Proventos e Descontos estruturados a partir das rubricas oficiais (easycoop_lancamento_itens)
   const proventos: any[] = [];
   const descontos: any[] = [];
+  const itens: any[] = [];
 
   const [rubricasRows] = await pool.query<any[]>(
     `SELECT cod_lancamento, descricao, tipo, valor
@@ -823,56 +844,162 @@ export async function getEasycoopCooperadoFolha(
 
   if (rubricasRows.length > 0) {
     for (const it of rubricasRows) {
-      const cod = String(it.cod_lancamento || "").replace(/\.0$/, "");
+      const rawCod = String(it.cod_lancamento || "").replace(/\.0$/, "").trim();
       const val = Number(it.valor || 0);
-      if (it.tipo === "C") {
-        proventos.push({
-          codigo: cod,
-          descricao: toUpperWithAccents(it.descricao),
-          ref: "-",
-          valor: val,
-        });
-      } else {
-        descontos.push({
-          codigo: cod,
-          descricao: toUpperWithAccents(it.descricao),
-          ref: cod === "200" ? "11%" : "-",
-          valor: val,
-        });
+      const isDesconto = String(it.tipo || "").toUpperCase() === "D";
+      const descr = toUpperWithAccents(it.descricao || (isDesconto ? "DESCONTO" : "PRODUCAO"));
+      const cod = rawCod ? rawCod.padStart(4, "0") : (isDesconto ? "0200" : "0100");
+
+      let ref = "1,00";
+      if (cod === "0200" || descr.includes("INSS") || descr.includes("PREVIDENCIA")) {
+        ref = "0,00";
       }
+
+      const itemObj = {
+        codigo: cod,
+        descricao: descr,
+        referencia: ref,
+        tipo: isDesconto ? "D" : "C",
+        valor: val,
+        vencimento_atual: !isDesconto ? val : null,
+        vencimento_acumulado: !isDesconto ? val : null,
+        desconto_atual: isDesconto ? val : null,
+        desconto_acumulado: isDesconto ? val : null,
+      };
+
+      if (!isDesconto) {
+        proventos.push(itemObj);
+      } else {
+        descontos.push(itemObj);
+      }
+      itens.push(itemObj);
     }
   } else {
     // Fallback sintético caso não haja itens analíticos cadastrados
-    const bruto = Number(f.valor_bruto || 0);
+    const bruto = Number(f.valor_bruto || f.valor_producao || 0);
+    const prodVal = Number(f.valor_producao || bruto);
+    const outrosCred = Number(f.outros_creditos || 0);
     const ajuda = Number(f.ajuda_custo || 0);
     const inss = Number(f.inss || 0);
     const irrf = Number(f.irrf || 0);
     const taxaAdm = Number(f.taxa_adm || 0);
 
-    if (bruto > 0) {
-      proventos.push({ codigo: "101", descricao: "PRODUÇÃO COOPERATIVA / HORAS", ref: "-", valor: bruto });
-    }
-    if (ajuda > 0) {
-      proventos.push({ codigo: "105", descricao: "AJUDA DE CUSTO", ref: "-", valor: ajuda });
+    if (prodVal > 0) {
+      const item = {
+        codigo: "0100",
+        descricao: "PRODUTIVIDADE",
+        referencia: "1,00",
+        tipo: "C",
+        valor: prodVal,
+        vencimento_atual: prodVal,
+        vencimento_acumulado: prodVal,
+        desconto_atual: null,
+        desconto_acumulado: null,
+      };
+      proventos.push(item);
+      itens.push(item);
     }
     if (inss > 0) {
-      descontos.push({ codigo: "201", descricao: "INSS - PREVIDÊNCIA SOCIAL", ref: "11%", valor: inss });
-    }
-    if (irrf > 0) {
-      descontos.push({ codigo: "202", descricao: "IRRF - IMPOSTO DE RENDA RETIDO", ref: "-", valor: irrf });
+      const item = {
+        codigo: "0200",
+        descricao: "INSS",
+        referencia: "0,00",
+        tipo: "D",
+        valor: inss,
+        vencimento_atual: null,
+        vencimento_acumulado: null,
+        desconto_atual: inss,
+        desconto_acumulado: inss,
+      };
+      descontos.push(item);
+      itens.push(item);
     }
     if (taxaAdm > 0) {
-      descontos.push({ codigo: "301", descricao: "TAXA ADMINISTRATIVA COOPERATIVA", ref: "-", valor: taxaAdm });
+      const item = {
+        codigo: "0202",
+        descricao: "QUOTAS PARTE - 010/010",
+        referencia: "1,00",
+        tipo: "D",
+        valor: taxaAdm,
+        vencimento_atual: null,
+        vencimento_acumulado: null,
+        desconto_atual: taxaAdm,
+        desconto_acumulado: taxaAdm,
+      };
+      descontos.push(item);
+      itens.push(item);
+    }
+    if (irrf > 0) {
+      const item = {
+        codigo: "0205",
+        descricao: "IRRF - IMPOSTO DE RENDA RETIDO",
+        referencia: "0,00",
+        tipo: "D",
+        valor: irrf,
+        vencimento_atual: null,
+        vencimento_acumulado: null,
+        desconto_atual: irrf,
+        desconto_acumulado: irrf,
+      };
+      descontos.push(item);
+      itens.push(item);
+    }
+    if (outrosCred > 0 || ajuda > 0) {
+      const item = {
+        codigo: "0316",
+        descricao: "PERCAPTA SAUDE SUPLEMENTAR VAR",
+        referencia: "1,00",
+        tipo: "C",
+        valor: (outrosCred || ajuda),
+        vencimento_atual: (outrosCred || ajuda),
+        vencimento_acumulado: (outrosCred || ajuda),
+        desconto_atual: null,
+        desconto_acumulado: null,
+      };
+      proventos.push(item);
+      itens.push(item);
     }
   }
 
-  const totalProventos = proventos.reduce((acc, it) => acc + it.valor, 0);
-  const totalDescontos = descontos.reduce((acc, it) => acc + it.valor, 0);
+  const totalProventos = proventos.reduce((acc, it) => acc + (it.valor || 0), 0);
+  const totalDescontos = descontos.reduce((acc, it) => acc + (it.valor || 0), 0);
   const liquido = Number(f.valor_liquido || (totalProventos - totalDescontos));
 
-  const baseInss = proventos.find((p) => p.codigo === "100" || p.codigo === "101")?.valor || totalProventos;
-  const inssVal = descontos.find((d) => d.codigo === "200" || d.codigo === "201")?.valor || 0;
-  const baseIrrf = baseInss > inssVal ? baseInss - inssVal : 0;
+  // Base Produtividade e Base INSS
+  const produtividadeItem = proventos.find((p) => p.codigo === "0100" || p.codigo === "100" || p.descricao.includes("PRODUTIVIDADE"));
+  const produtividadeVal = produtividadeItem ? produtividadeItem.valor : (totalProventos || Number(f.valor_producao || f.valor_bruto || 0));
+  const baseInss = Number(f.inss ? produtividadeVal : (totalProventos || 0));
+  const inssVal = descontos.find((d) => d.codigo === "0200" || d.codigo === "200" || d.descricao.includes("INSS"))?.valor || Number(f.inss || 0);
+  const baseIrrf = Math.max(0, baseInss - inssVal);
+
+  // Mapeamento de banco no estilo Imagem 2 (ex: "BB", "OWL", etc.)
+  let bancoSigla = "BB";
+  const bCode = String(c.bank_code || "").trim();
+  const bName = String(c.bank_name || "").toUpperCase();
+  if (bCode === "001" || bName.includes("BRASIL") || bName.includes("BB")) {
+    bancoSigla = "BB";
+  } else if (bCode === "104" || bName.includes("CAIXA") || bName.includes("CEF")) {
+    bancoSigla = "CEF";
+  } else if (bCode === "033" || bName.includes("SANTANDER")) {
+    bancoSigla = "SANTANDER";
+  } else if (bCode === "237" || bName.includes("BRADESCO")) {
+    bancoSigla = "BRADESCO";
+  } else if (bCode === "341" || bName.includes("ITAU")) {
+    bancoSigla = "ITAU";
+  } else if (bCode === "450" || bCode === "770" || bName.includes("OWL") || bName.includes("FITBANK")) {
+    bancoSigla = "OWL";
+  } else if (bCode === "260" || bName.includes("NUBANK")) {
+    bancoSigla = "NUBANK";
+  } else if (bCode === "756" || bName.includes("SICOOB")) {
+    bancoSigla = "SICOOB";
+  } else if (bCode === "748" || bName.includes("SICREDI")) {
+    bancoSigla = "SICREDI";
+  } else if (c.bank_name) {
+    bancoSigla = toUpperNoAccents(c.bank_name).slice(0, 10);
+  }
+
+  const rawMatricula = c.registration_number || f.matricula || "";
+  const matriculaFormatada = String(rawMatricula).replace(/\D/g, "").padStart(8, "0") || "00000000";
 
   return {
     folha: {
@@ -881,31 +1008,49 @@ export async function getEasycoopCooperadoFolha(
       mes: f.mes,
       folha: f.folha,
       competencia_str: `${String(f.mes).padStart(2, "0")}/${f.ano}`,
+      competencia_rotulo: `${String(f.mes).padStart(2, "0")} / ${f.ano} - Folha : ${String(f.folha).padStart(2, "0")}`,
       tomador: toUpperWithAccents(f.tomador || c.contract_name || "COOPEDU SEDE"),
       data_pagamento: f.data_pagamento_fmt || "-",
       comprovante_doc: f.comprovante_doc || "-",
+      cooperativa: {
+        razao_social: "COOP TRAB PROF DA EDUCACAO DO ESTADO RIO G NORTE",
+        cnpj: "35.537.126/0001-84",
+        endereco: "RUA PROJETADA, N 1",
+        cidade: "MONTE ALEGRE",
+        uf: "RN",
+        telefone: "(84) 98156-1479",
+      },
       cooperado: {
-        nome: toUpperWithAccents(c.name),
-        cpf: c.document,
-        matricula: c.registration_number || f.matricula,
+        nome: toUpperWithAccents(c.name || "COOPERADO"),
+        cpf: formatCpf(c.document),
+        cpf_raw: c.document,
+        matricula: matriculaFormatada,
         cargo: toUpperWithAccents(officialCargo),
+        banco_sigla: bancoSigla,
         banco: (c.bank_code === "770" || c.bank_code === "450" || c.bank_name?.includes("770") || c.bank_name?.toUpperCase().includes("FITBANK") || c.bank_name?.toUpperCase().includes("OWL"))
           ? "450 - BANCO OWL"
           : (c.bank_name || "Banco não informado"),
-        agencia: c.agency,
-        conta: c.account_number,
+        agencia: c.agency || "1140",
+        agencia_digito: "",
+        conta: c.account_number || "26725",
+        conta_digito: c.account_digit || "2",
         pix: c.pix_key,
       },
+      itens,
       proventos,
       descontos,
       totais: {
-        totalProventos,
-        totalDescontos,
+        totalVencimentos: totalProventos,
+        totalDescontos: totalDescontos,
+        totalProventos: totalProventos, // compatibilidade
         valorLiquido: liquido,
       },
       bases_calculo: {
+        produtividade: Number(produtividadeVal || 0),
         baseInss: Number(baseInss || 0),
         baseIrrf: Number(baseIrrf || 0),
+        nroDepIrrf: String(totalDependentes).padStart(2, "0"),
+        valorIrrfDep: 0,
       },
     },
     competencias,

@@ -5,7 +5,7 @@ export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
     email: string;
-    role: "SUPER_ADMIN" | "USER";
+    role: "SUPER_ADMIN" | "MASTER" | "USER";
     name: string;
   };
 }

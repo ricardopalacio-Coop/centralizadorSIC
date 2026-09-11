@@ -354,53 +354,53 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               )}
             </div>
 
-            {/* 1.4 SETUP - DROPDOWN (APIs, Usuários, Trocar Minha Senha) */}
-            <div className="relative" ref={setupRef}>
-              <button
-                onClick={() => {
-                  setIsSetupOpen((prev) => !prev);
-                  setIsEasyCoopOpen(false);
-                  setIsTermosAntigosOpen(false);
-                  setIsTermosSicOpen(false);
-                }}
-                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isSetupActive
-                    ? "bg-sky-50 text-sky-700 border border-sky-200 shadow-sm ring-1 ring-sky-200"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-              >
-                <Code className="h-4 w-4 text-sky-600" />
-                <span className="hidden sm:inline font-bold">Setup</span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    isSetupOpen ? "rotate-180 text-sky-600" : ""
+            {/* 1.4 SETUP - DROPDOWN (APIs, Usuários, Trocar Minha Senha) - Apenas SuperAdmin */}
+            {user?.role === "SUPER_ADMIN" && (
+              <div className="relative" ref={setupRef}>
+                <button
+                  onClick={() => {
+                    setIsSetupOpen((prev) => !prev);
+                    setIsEasyCoopOpen(false);
+                    setIsTermosAntigosOpen(false);
+                    setIsTermosSicOpen(false);
+                  }}
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isSetupActive
+                      ? "bg-sky-50 text-sky-700 border border-sky-200 shadow-sm ring-1 ring-sky-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
-                />
-              </button>
-
-              {isSetupOpen && (
-                <div className="absolute right-0 sm:left-0 mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <button
-                    onClick={() => {
-                      setActiveTab("apis");
-                      setIsSetupOpen(false);
-                    }}
-                    className={`w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors ${
-                      activeTab === "apis"
-                        ? "bg-sky-50 text-sky-800"
-                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <Code className="h-4 w-4 text-sky-600" />
+                  <span className="hidden sm:inline font-bold">Setup</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                      isSetupOpen ? "rotate-180 text-sky-600" : ""
                     }`}
-                  >
-                    <div className="p-2 rounded-xl bg-sky-100 text-sky-700">
-                      <Code className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-xs block">APIs</span>
-                      <span className="text-[10px] text-slate-400 block">Integrações e Webhooks</span>
-                    </div>
-                  </button>
+                  />
+                </button>
 
-                  {user?.role === "SUPER_ADMIN" && (
+                {isSetupOpen && (
+                  <div className="absolute right-0 sm:left-0 mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <button
+                      onClick={() => {
+                        setActiveTab("apis");
+                        setIsSetupOpen(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors ${
+                        activeTab === "apis"
+                          ? "bg-sky-50 text-sky-800"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <div className="p-2 rounded-xl bg-sky-100 text-sky-700">
+                        <Code className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs block">APIs</span>
+                        <span className="text-[10px] text-slate-400 block">Integrações e Webhooks</span>
+                      </div>
+                    </button>
+
                     <button
                       onClick={() => {
                         setActiveTab("users");
@@ -420,42 +420,42 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                         <span className="text-[10px] text-slate-400 block">Gestão de Acessos</span>
                       </div>
                     </button>
-                  )}
 
-                  <button
-                    onClick={() => {
-                      setIsSetupOpen(false);
-                      setIsSicModalOpen(true);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors text-slate-700 hover:bg-sky-50 hover:text-sky-900"
-                  >
-                    <div className="p-2 rounded-xl bg-sky-100 text-sky-700">
-                      <Key className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-xs block">Conexão SIC</span>
-                      <span className="text-[10px] text-slate-400 block">Status e Token do Portal</span>
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => {
+                        setIsSetupOpen(false);
+                        setIsSicModalOpen(true);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors text-slate-700 hover:bg-sky-50 hover:text-sky-900"
+                    >
+                      <div className="p-2 rounded-xl bg-sky-100 text-sky-700">
+                        <Key className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs block">Conexão SIC</span>
+                        <span className="text-[10px] text-slate-400 block">Status e Token do Portal</span>
+                      </div>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setIsSetupOpen(false);
-                      setIsPasswordModalOpen(true);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors text-slate-700 hover:bg-amber-50 hover:text-amber-900"
-                  >
-                    <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
-                      <KeyRound className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-xs block">Trocar Minha Senha</span>
-                      <span className="text-[10px] text-slate-400 block">Segurança da Conta</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
+                    <button
+                      onClick={() => {
+                        setIsSetupOpen(false);
+                        setIsPasswordModalOpen(true);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 flex items-center space-x-3 transition-colors text-slate-700 hover:bg-amber-50 hover:text-amber-900"
+                    >
+                      <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
+                        <KeyRound className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs block">Trocar Minha Senha</span>
+                        <span className="text-[10px] text-slate-400 block">Segurança da Conta</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Status Conexão SIC */}
             <button
@@ -479,8 +479,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <div className="flex items-center space-x-2">
               <div className="hidden md:flex flex-col items-end">
                 <span className="text-xs font-bold text-slate-800">{user?.name}</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-sky-700 border border-slate-200">
-                  {user?.role === "SUPER_ADMIN" ? "SuperAdmin" : "Operador"}
+                <span
+                  className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${
+                    user?.role === "SUPER_ADMIN"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : user?.role === "MASTER"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-slate-100 text-sky-700 border-slate-200"
+                  }`}
+                >
+                  {user?.role === "SUPER_ADMIN" ? "SuperAdmin" : user?.role === "MASTER" ? "Usuário Master" : "Operador"}
                 </span>
               </div>
 

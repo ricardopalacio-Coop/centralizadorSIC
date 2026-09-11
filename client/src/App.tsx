@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -18,6 +18,13 @@ import { Loader2 } from "lucide-react";
 const MainContent: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabType>("dashboard");
+
+  // Bloqueio de segurança: se o usuário não for SuperAdmin e tentar acessar abas do Setup, redireciona para o dashboard
+  useEffect(() => {
+    if (user && user.role !== "SUPER_ADMIN" && (activeTab === "apis" || activeTab === "users")) {
+      setActiveTab("dashboard");
+    }
+  }, [user, activeTab]);
 
   if (isLoading) {
     return (
@@ -46,7 +53,7 @@ const MainContent: React.FC = () => {
         {activeTab === "importacao" && <ImportacaoPage />}
         {activeTab === "desligamento" && <DesligamentoPage />}
         {activeTab === "plugsign" && <PlugSignPage />}
-        {activeTab === "apis" && <ApiManagementPage />}
+        {activeTab === "apis" && user.role === "SUPER_ADMIN" && <ApiManagementPage />}
         {activeTab === "users" && user.role === "SUPER_ADMIN" && <UsersPage />}
       </main>
     </div>

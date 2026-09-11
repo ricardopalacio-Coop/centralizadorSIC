@@ -1,10 +1,10 @@
 import { Router, Response } from "express";
 import crypto from "crypto";
 import { pool } from "../db";
-import { authenticateToken, AuthenticatedRequest } from "../middlewares/auth";
+import { authenticateToken, requireSuperAdmin, AuthenticatedRequest } from "../middlewares/auth";
 
 const router = Router();
-router.use(authenticateToken);
+router.use(authenticateToken, requireSuperAdmin);
 
 /**
  * GET /api/tokens/listar

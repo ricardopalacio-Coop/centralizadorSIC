@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { PdfViewerModal } from './PdfViewerModal';
 import { FolhaLoteModal } from './FolhaLoteModal';
+import { DemonstrativoProdutividadeCard } from './DemonstrativoProdutividadeCard';
 
 export function toUpperNoAccents(str: any): string {
   if (str === null || str === undefined) return '';
@@ -1314,146 +1315,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
               Nenhum demonstrativo de folha encontrado para a competência selecionada.
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden space-y-6 p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-                <div className="flex items-center space-x-4">
-                  <img src="/logo_sic.svg" alt="SIC Logo" className="h-12 w-auto object-contain" />
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 tracking-tight">
-                      COOPEDU - COOPERATIVA DE EDUCAÇÃO E SAÚDE
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium">
-                      DEMONSTRATIVO MENSAL DE REPASSE E PRODUTIVIDADE COOPERATIVA
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-400 font-bold block">COMPETÊNCIA</span>
-                  <span className="text-xl font-black text-indigo-700 font-mono">
-                    {folhaData.folha.competencia_str}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
-                <div>
-                  <span className="text-slate-400 block font-medium">Cooperado</span>
-                  <span className="font-extrabold text-slate-900">{folhaData.folha.cooperado.nome}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">CPF / Matrícula</span>
-                  <span className="font-extrabold text-slate-900 font-mono">
-                    {formatCpf(folhaData.folha.cooperado.cpf)} (#{folhaData.folha.cooperado.matricula})
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">Atividade</span>
-                  <span className="font-extrabold text-slate-900">{folhaData.folha.cooperado.cargo}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-medium">Tomador de Serviço</span>
-                  <span className="font-extrabold text-indigo-700">{folhaData.folha.tomador}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-emerald-200 overflow-hidden shadow-sm">
-                  <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200 flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-800">
-                      Proventos / Créditos (+)
-                    </span>
-                  </div>
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
-                      <tr>
-                        <th className="px-4 py-2">Descrição</th>
-                        <th className="px-4 py-2 text-right">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {folhaData.folha.proventos?.map((it: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="px-4 py-2.5 font-medium text-slate-800">{it.descricao}</td>
-                          <td className="px-4 py-2.5 text-right font-black font-mono text-emerald-700">
-                            {formatMoney(it.valor)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="rounded-2xl border border-rose-200 overflow-hidden shadow-sm">
-                  <div className="bg-rose-50 px-4 py-2.5 border-b border-rose-200 flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-rose-800">
-                      Descontos / Retenções (-)
-                    </span>
-                  </div>
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
-                      <tr>
-                        <th className="px-4 py-2">Descrição</th>
-                        <th className="px-4 py-2 text-right">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {folhaData.folha.descontos?.map((it: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="px-4 py-2.5 font-medium text-slate-800">{it.descricao}</td>
-                          <td className="px-4 py-2.5 text-right font-black font-mono text-rose-600">
-                            {formatMoney(it.valor)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <span className="text-slate-400 font-bold text-xs block">Total de Proventos</span>
-                  <span className="text-lg font-black text-emerald-700">
-                    {formatMoney(folhaData.folha.totais.totalProventos)}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <span className="text-slate-400 font-bold text-xs block">Total de Descontos</span>
-                  <span className="text-lg font-black text-rose-600">
-                    {formatMoney(folhaData.folha.totais.totalDescontos)}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md">
-                  <span className="text-emerald-100 font-bold text-xs block">VALOR LÍQUIDO A RECEBER</span>
-                  <span className="text-2xl font-black font-mono">
-                    {formatMoney(folhaData.folha.totais.valorLiquido)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs grid grid-cols-2 sm:grid-cols-4 gap-4 text-slate-600">
-                <div>
-                  <span className="text-slate-400 block">Base INSS:</span>
-                  <span className="font-bold">{formatMoney(folhaData.folha.bases_calculo.baseInss)}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Base IRRF:</span>
-                  <span className="font-bold">{formatMoney(folhaData.folha.bases_calculo.baseIrrf)}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Depósito em Conta:</span>
-                  <span className="font-bold">
-                    {getFormattedBank(folhaData.folha.cooperado.banco, folhaData.folha.cooperado.banco).name} Ag: {folhaData.folha.cooperado.agencia} CC: {folhaData.folha.cooperado.conta}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Pago em:</span>
-                  <span className="font-bold">{formatDate(folhaData.folha.data_pagamento)}</span>
-                </div>
-              </div>
-            </div>
+            <DemonstrativoProdutividadeCard folha={folhaData.folha} />
           )}
         </div>
       )}

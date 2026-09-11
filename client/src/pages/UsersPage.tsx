@@ -19,7 +19,7 @@ export const UsersPage: React.FC = () => {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState("OPERATOR");
+  const [newRole, setNewRole] = useState("MASTER");
   const [createLoading, setCreateLoading] = useState(false);
 
   // Estado do Modal de Redefinição de Senha
@@ -222,7 +222,8 @@ export const UsersPage: React.FC = () => {
                 onChange={(e) => setNewRole(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:outline-none focus:border-sky-500 font-semibold"
               >
-                <option value="OPERATOR">Operador (Apenas Leitura e Consultas)</option>
+                <option value="USER">Operador (Apenas Leitura e Consultas)</option>
+                <option value="MASTER">Usuário Master (Acesso Total exceto Setup)</option>
                 <option value="SUPER_ADMIN">SuperAdmin (Acesso Total e Gestão)</option>
               </select>
             </div>
@@ -266,10 +267,12 @@ export const UsersPage: React.FC = () => {
                         className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           u.role === "SUPER_ADMIN"
                             ? "bg-purple-100 text-purple-700 border border-purple-200"
+                            : u.role === "MASTER"
+                            ? "bg-blue-100 text-blue-700 border border-blue-200"
                             : "bg-slate-100 text-slate-700 border border-slate-200"
                         }`}
                       >
-                        {u.role}
+                        {u.role === "SUPER_ADMIN" ? "SuperAdmin" : u.role === "MASTER" ? "Usuário Master" : "Operador"}
                       </span>
                     </td>
                     <td className="p-3 text-right space-x-1">

@@ -49,7 +49,8 @@ router.post("/", async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const userRole = role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "USER";
+    const allowedRoles = ["SUPER_ADMIN", "MASTER", "USER"];
+    const userRole = allowedRoles.includes(role) ? role : "USER";
 
     const [result]: any = await pool.query(
       "INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'ACTIVE')",
@@ -116,9 +117,13 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
 
+    const allowedRoles = ["SUPER_ADMIN", "MASTER", "USER"];
+    const roleToUpdate = role && allowedRoles.includes(role) ? role : null;
+    const statusToUpdate = status && ["ACTIVE", "INACTIVE"].includes(status) ? status : null;
+
     await pool.query(
       "UPDATE users SET name = COALESCE(?, name), role = COALESCE(?, role), status = COALESCE(?, status) WHERE id = ?",
-      [name, role, status, targetUserId]
+      [name?.trim() || null, roleToUpdate, statusToUpdate, targetUserId]
     );
 
     return res.json({ message: "Dados do usuário atualizados com sucesso." });

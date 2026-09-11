@@ -4,7 +4,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: "SUPER_ADMIN" | "USER";
+  role: "SUPER_ADMIN" | "MASTER" | "USER";
 }
 
 interface AuthContextType {

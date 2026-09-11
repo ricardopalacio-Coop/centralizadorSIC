@@ -54,7 +54,7 @@ export async function initDb() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
-        role ENUM('SUPER_ADMIN', 'USER') NOT NULL DEFAULT 'USER',
+        role ENUM('SUPER_ADMIN', 'MASTER', 'USER') NOT NULL DEFAULT 'USER',
         status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -449,6 +449,7 @@ export async function initDb() {
       "ALTER TABLE easycoop_lancamento_itens ADD COLUMN descricao VARCHAR(255) NULL;",
       "ALTER TABLE easycoop_lancamento_itens MODIFY COLUMN tipo VARCHAR(10) NOT NULL DEFAULT 'C';",
       "ALTER TABLE easycoop_lancamento_itens MODIFY COLUMN valor DECIMAL(12,2) NOT NULL DEFAULT 0;",
+      "ALTER TABLE users MODIFY COLUMN role ENUM('SUPER_ADMIN', 'MASTER', 'USER') NOT NULL DEFAULT 'USER';",
     ];
     for (const sql of itemCols) {
       await connection.query(sql).catch(() => {});
