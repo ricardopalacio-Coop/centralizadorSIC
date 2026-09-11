@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Users, UserPlus, KeyRound, Trash2, CheckCircle, AlertTriangle, ShieldCheck, Mail, User as UserIcon } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import {
+  Users,
+  UserPlus,
+  KeyRound,
+  Trash2,
+  CheckCircle,
+  AlertTriangle,
+  ShieldCheck,
+  Shield,
+  ChevronDown,
+  Check,
+  Mail,
+  User as UserIcon,
+} from "lucide-react";
 
 interface UserItem {
   id: number;
@@ -10,6 +24,7 @@ interface UserItem {
 }
 
 export const UsersPage: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +41,11 @@ export const UsersPage: React.FC = () => {
   const [resetUser, setResetUser] = useState<UserItem | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+
+  // Estado do Modal de Alteração de Perfil de Acesso
+  const [roleModalUser, setRoleModalUser] = useState<UserItem | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("USER");
+  const [roleLoading, setRoleLoading] = useState<boolean>(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -131,6 +151,50 @@ export const UsersPage: React.FC = () => {
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const handleOpenRoleModal = (u: UserItem) => {
+    if (u.id === currentUser?.id) return;
+    setRoleModalUser(u);
+    setSelectedRole(u.role);
+  };
+
+  const handleUpdateRoleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roleModalUser) return;
+
+    setError("");
+    setSuccess("");
+    setRoleLoading(true);
+
+    try {
+      const res = await fetch(`/api/users/${roleModalUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: selectedRole }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Falha ao alterar perfil do usuário.");
+      }
+
+      const roleLabel =
+        selectedRole === "SUPER_ADMIN"
+          ? "SuperAdmin"
+          : selectedRole === "MASTER"
+          ? "Usuário Master"
+          : "Operador";
+
+      setSuccess(`Perfil de ${roleModalUser.name} alterado com sucesso para ${roleLabel}!`);
+      setRoleModalUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRoleLoading(false);
     }
   };
 
@@ -263,19 +327,57 @@ export const UsersPage: React.FC = () => {
                     </td>
                     <td className="p-3 text-slate-600 font-mono">{u.email}</td>
                     <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          u.role === "SUPER_ADMIN"
-                            ? "bg-purple-100 text-purple-700 border border-purple-200"
-                            : u.role === "MASTER"
-                            ? "bg-blue-100 text-blue-700 border border-blue-200"
-                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                        }`}
-                      >
-                        {u.role === "SUPER_ADMIN" ? "SuperAdmin" : u.role === "MASTER" ? "Usuário Master" : "Operador"}
-                      </span>
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRoleModal(u)}
+                          disabled={u.id === currentUser?.id}
+                          title={
+                            u.id === currentUser?.id
+                              ? "Você não pode alterar seu próprio perfil de SuperAdmin"
+                              : "Clique para alterar o perfil de acesso"
+                          }
+                          className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                            u.role === "SUPER_ADMIN"
+                              ? "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
+                              : u.role === "MASTER"
+                              ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                          } ${
+                            u.id === currentUser?.id
+                              ? "cursor-default opacity-85"
+                              : "cursor-pointer hover:shadow-xs active:scale-95"
+                          }`}
+                        >
+                          <Shield className="h-3 w-3" />
+                          <span>{u.role === "SUPER_ADMIN" ? "SuperAdmin" : u.role === "MASTER" ? "Usuário Master" : "Operador"}</span>
+                          {u.id !== currentUser?.id && <ChevronDown className="h-2.5 w-2.5 opacity-60" />}
+                        </button>
+                        {u.id === currentUser?.id && (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            (Você)
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 text-right space-x-1">
+                      <button
+                        onClick={() => handleOpenRoleModal(u)}
+                        disabled={u.id === currentUser?.id}
+                        title={
+                          u.id === currentUser?.id
+                            ? "Você não pode alterar seu próprio perfil"
+                            : "Alterar Perfil deste Usuário"
+                        }
+                        className={`p-1.5 rounded-lg transition-all ${
+                          u.id === currentUser?.id
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-slate-500 hover:text-sky-600 hover:bg-sky-50"
+                        }`}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                      </button>
+
                       <button
                         onClick={() => setResetUser(u)}
                         title="Redefinir Senha deste Usuário"
@@ -286,8 +388,13 @@ export const UsersPage: React.FC = () => {
 
                       <button
                         onClick={() => handleDeleteUser(u.id, u.email)}
-                        title="Excluir Usuário"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                        disabled={u.id === currentUser?.id}
+                        title={u.id === currentUser?.id ? "Você não pode excluir sua própria conta" : "Excluir Usuário"}
+                        className={`p-1.5 rounded-lg transition-all ${
+                          u.id === currentUser?.id
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-slate-500 hover:text-rose-600 hover:bg-rose-50"
+                        }`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -340,6 +447,152 @@ export const UsersPage: React.FC = () => {
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 transition-all shadow-md shadow-amber-500/20 disabled:opacity-50"
                 >
                   {resetLoading ? "Salvando..." : "Salvar Nova Senha"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Alteração de Perfil de Acesso */}
+      {roleModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-lg p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Alterar Perfil de Acesso</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Usuário: <strong className="text-slate-800">{roleModalUser.name}</strong> ({roleModalUser.email})
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateRoleSubmit} className="space-y-4">
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Selecione o Nível de Permissão:
+                </label>
+
+                {/* Opção SuperAdmin */}
+                <div
+                  onClick={() => setSelectedRole("SUPER_ADMIN")}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
+                    selectedRole === "SUPER_ADMIN"
+                      ? "border-purple-500 bg-purple-50/60 shadow-sm ring-1 ring-purple-400"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedRole === "SUPER_ADMIN"
+                        ? "border-purple-600 bg-purple-600 text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {selectedRole === "SUPER_ADMIN" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-purple-900">SuperAdmin</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase">
+                        Acesso Total & Setup
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      Acesso completo e irrestrito ao sistema e ao menu <strong>Setup</strong> (Gestão de Usuários, Chaves de API e Conexões).
+                    </p>
+                  </div>
+                </div>
+
+                {/* Opção Usuário Master */}
+                <div
+                  onClick={() => setSelectedRole("MASTER")}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
+                    selectedRole === "MASTER"
+                      ? "border-blue-500 bg-blue-50/60 shadow-sm ring-1 ring-blue-400"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedRole === "MASTER"
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {selectedRole === "MASTER" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-blue-900">Usuário Master</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase">
+                        Completo sem Setup
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      Acesso total a todas as operações (Pesquisa Cooperado, Dossiê, EasyCoop, Termos SIC e Antigos, Importação), <strong>sem acesso ao menu Setup</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Opção Operador */}
+                <div
+                  onClick={() => setSelectedRole("USER")}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
+                    selectedRole === "USER"
+                      ? "border-sky-500 bg-sky-50/60 shadow-sm ring-1 ring-sky-400"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedRole === "USER"
+                        ? "border-sky-600 bg-sky-600 text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {selectedRole === "USER" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-900">Operador</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                        Operações Padrão
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      Acesso padrão para consultas, pesquisas de cooperados e geração de termos de rotina.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRoleModalUser(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={roleLoading || selectedRole === roleModalUser.role}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {roleLoading ? (
+                    <span>Salvando...</span>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Confirmar Alteração</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

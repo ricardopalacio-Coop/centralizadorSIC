@@ -112,7 +112,7 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
     const targetUserId = parseInt(paramId, 10);
     const { name, role, status } = req.body;
 
-    const [users] = await pool.query<any[]>("SELECT id, email FROM users WHERE id = ?", [targetUserId]);
+    const [users] = await pool.query<any[]>("SELECT id, name, email, role, status FROM users WHERE id = ?", [targetUserId]);
     if (users.length === 0) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
@@ -121,12 +121,22 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
     const roleToUpdate = role && allowedRoles.includes(role) ? role : null;
     const statusToUpdate = status && ["ACTIVE", "INACTIVE"].includes(status) ? status : null;
 
+    // Regra de segurança: O SuperAdmin autenticado não pode rebaixar seu próprio perfil
+    if (targetUserId === req.user?.id && roleToUpdate && roleToUpdate !== "SUPER_ADMIN") {
+      return res.status(400).json({ error: "Você não pode alterar ou rebaixar seu próprio perfil de SuperAdmin." });
+    }
+
     await pool.query(
       "UPDATE users SET name = COALESCE(?, name), role = COALESCE(?, role), status = COALESCE(?, status) WHERE id = ?",
       [name?.trim() || null, roleToUpdate, statusToUpdate, targetUserId]
     );
 
-    return res.json({ message: "Dados do usuário atualizados com sucesso." });
+    const [updated] = await pool.query<any[]>("SELECT id, name, email, role, status FROM users WHERE id = ?", [targetUserId]);
+
+    return res.json({
+      message: "Dados do usuário atualizados com sucesso.",
+      user: updated[0],
+    });
   } catch (error: any) {
     console.error("[Users Error] Erro ao atualizar usuário:", error.message);
     return res.status(500).json({ error: "Erro ao atualizar usuário." });
