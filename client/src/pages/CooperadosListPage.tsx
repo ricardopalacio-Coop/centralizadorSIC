@@ -178,20 +178,21 @@ export const CooperadosListPage: React.FC = () => {
                     className="hover:bg-sky-50/50 transition-colors group cursor-pointer"
                     onClick={() => setSelectedCpf(item.document)}
                   >
-                    <td className="p-4 font-bold text-slate-900 flex items-center space-x-3">
+                    <td className="p-4 font-bold text-slate-900 min-w-[260px]"><div className="flex items-center space-x-3">
                       <div className="h-9 w-9 rounded-xl bg-sky-100 text-sky-700 border border-sky-200 flex items-center justify-center font-extrabold text-sm shrink-0">
                         {item.name.charAt(0)}
                       </div>
-                      <span className="group-hover:text-sky-700 transition-colors line-clamp-1">
+                      <span className="group-hover:text-[#005487] transition-colors line-clamp-1">
                         {item.name}
                       </span>
+                      </div>
                     </td>
 
-                    <td className="p-4 font-mono font-semibold text-slate-700">
+                    <td className="p-4 font-mono font-semibold text-slate-700 whitespace-nowrap">
                       {formatCpf(item.document)}
                     </td>
 
-                    <td className="p-4 font-mono text-slate-600">
+                    <td className="p-4 font-mono text-slate-600 whitespace-nowrap">
                       {item.registration_number || "N/I"}
                     </td>
 
@@ -199,7 +200,7 @@ export const CooperadosListPage: React.FC = () => {
                       {item.contract_name || "COOPEDU GESTORES"}
                     </td>
 
-                    <td className="p-4 text-slate-600">
+                    <td className="p-4 text-slate-600 whitespace-nowrap">
                       {formatDate(item.admission_date)}
                     </td>
 

@@ -34,6 +34,7 @@ import {
   CheckSquare,
   Square,
   FileCheck2,
+  Lightbulb,
 } from 'lucide-react';
 import { PdfViewerModal } from './PdfViewerModal';
 import { FolhaLoteModal } from './FolhaLoteModal';
@@ -1186,7 +1187,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                         <div className="px-5 pb-5 pt-2 bg-slate-50/50 border-t border-slate-100 space-y-3">
                           {Number(f.outros_creditos) > 0 && (
                             <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-900 flex items-start gap-2.5 shadow-2xs">
-                              <span className="text-base leading-none">💡</span>
+                              <Lightbulb className="h-4 w-4 text-amber-500 shrink-0" />
                               <div>
                                 <span className="font-extrabold block text-sky-950">Composição da Remuneração Bruta:</span>
                                 <span className="text-sky-800">

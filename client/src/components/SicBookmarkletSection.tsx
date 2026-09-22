@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Bookmark, Copy, Check, Sparkles, ExternalLink, ShieldCheck } from "lucide-react";
+import { Bookmark, Copy, Check, Sparkles, ExternalLink, ShieldCheck, Zap } from "lucide-react";
 
 export const SicBookmarkletSection: React.FC = () => {
   const [copied, setCopied] = useState(false);
@@ -39,14 +39,14 @@ export const SicBookmarkletSection: React.FC = () => {
           href={bookmarkletCode}
           onClick={(e) => {
             e.preventDefault();
-            alert("👉 Como usar:\n\n1. Arraste este botão até a Barra de Favoritos do seu navegador (Ctrl+Shift+B)!\n2. Acesse o portal https://ui.coopedu.app.br\n3. Clique no favorito para sincronizar em 1 segundo!");
+            alert("Como usar:\n\n1. Arraste este botão até a Barra de Favoritos do seu navegador (Ctrl+Shift+B)!\n2. Acesse o portal https://ui.coopedu.app.br\n3. Clique no favorito para sincronizar em 1 segundo!");
           }}
           draggable
           className="inline-flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing border border-indigo-500/30 select-none"
           title="Arraste este botão para a Barra de Favoritos do seu navegador"
         >
           <Bookmark className="h-4 w-4 fill-white/20" />
-          <span>⚡ Arraste para os Favoritos: Sincronizar SIC</span>
+          <span className="flex items-center gap-1.5"><Zap className="h-4 w-4" /> Arraste para os Favoritos: Sincronizar SIC</span>
         </a>
 
         <button
@@ -90,7 +90,7 @@ export const SicBookmarkletSection: React.FC = () => {
             e faça login normalmente.
           </li>
           <li>
-            Clique no favorito <strong>⚡ Sincronizar SIC</strong> na barra. O token é lido e sincronizado instantaneamente.
+            Clique no favorito <strong>Sincronizar SIC</strong> na barra. O token é lido e sincronizado instantaneamente.
           </li>
           <li>
             O <strong>Auto-Refresh</strong> do servidor manterá a sessão renovada a cada 25 minutos automaticamente enquanto estiver ativo!

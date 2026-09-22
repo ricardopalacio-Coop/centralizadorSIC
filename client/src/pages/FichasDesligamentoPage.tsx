@@ -123,13 +123,13 @@ export const FichasDesligamentoPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`✅ ${data.message}`);
+        alert(`${data.message}`);
         fetchFichas();
       } else {
-        alert(`❌ ${data.error || "Falha ao atualizar dados com a base Easy."}`);
+        alert(`${data.error || "Falha ao atualizar dados com a base Easy."}`);
       }
     } catch (err: any) {
-      alert(`❌ Erro ao comunicar com o servidor: ${err.message}`);
+      alert(`Erro ao comunicar com o servidor: ${err.message}`);
     } finally {
       setIsUpdatingEasy(false);
     }
@@ -341,7 +341,7 @@ export const FichasDesligamentoPage: React.FC = () => {
             <div className="p-2.5 bg-blue-50 rounded-xl text-[#005487]">
               <FolderArchive className="h-8 w-8" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Fichas de desligamento</h1>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight whitespace-nowrap">Fichas de desligamento</h1>
             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-[#005487] border border-blue-200 whitespace-nowrap">
               {metrics.total.toLocaleString("pt-BR")} arquivos
             </span>
@@ -351,7 +351,7 @@ export const FichasDesligamentoPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {/* Botão Split de Varredura Profunda */}
           <div className="relative inline-flex rounded-xl shadow-sm">
             <button
@@ -458,7 +458,7 @@ export const FichasDesligamentoPage: React.FC = () => {
           <button
             onClick={handleAtualizarEasy}
             disabled={isUpdatingEasy || scanStatus?.isScanning}
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm shadow-emerald-600/20"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 font-semibold text-xs flex items-center space-x-2 transition-all"
             title="Preenche Matrícula, Data de Nascimento e Contrato Principal cruzando com a base de cooperados do EasyCoop"
           >
             {isUpdatingEasy ? (
@@ -473,7 +473,7 @@ export const FichasDesligamentoPage: React.FC = () => {
           <button
             onClick={handleSync}
             disabled={syncing || loading || scanStatus?.isScanning}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 font-semibold text-xs flex items-center space-x-2 transition-all"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
             <span>{syncing ? "Sincronizando..." : "Sincronizar Catálogo"}</span>
@@ -484,7 +484,7 @@ export const FichasDesligamentoPage: React.FC = () => {
             href="https://drive.google.com/drive/folders/1Htt4v5GBm23RYuSaoJ6b6LqpobC1NMfb?usp=sharing"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 font-semibold text-xs flex items-center space-x-2 transition-all"
             title="Abrir pasta de Desligamentos diretamente no Google Drive"
           >
             <ExternalLink className="h-4 w-4" />
@@ -756,7 +756,7 @@ export const FichasDesligamentoPage: React.FC = () => {
                     {/* Matrícula */}
                     <td className="py-3.5 px-4">
                       {item.matricula ? (
-                        <span className="font-mono font-bold text-rose-900 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 inline-block">
+                        <span className="font-mono font-bold text-rose-900 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 inline-block whitespace-nowrap">
                           {item.matricula}
                         </span>
                       ) : (
