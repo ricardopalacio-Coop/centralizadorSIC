@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import { Search, UserCheck, CreditCard, Building2, Eye, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, RefreshCw, Users, FileText } from "lucide-react";
 import { CooperadoDetails } from "../components/CooperadoDetails";
 import { PdfViewerModal } from "../components/PdfViewerModal";
@@ -92,38 +93,25 @@ export const CooperadosListPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-300">
-      {/* Cabeçalho da Página */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="p-3.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
-            <Users className="h-7 w-7" />
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-slate-900">Lista Completa de Cooperados</h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Consulta integrada via API (<span className="font-mono text-sky-700">/api/cooperado/listar</span>)
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={Users}
+        titulo="Cooperados"
+        descricao="Lista completa integrada pela API do Core Coopedu."
+        contador={`${totalCount.toLocaleString("pt-BR")} cooperados`}
+        acoes={
           <button
             onClick={() => fetchCooperadosList()}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center space-x-2 transition-all shadow-sm"
+            className="h-11 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center gap-2 transition-all"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             <span>Atualizar</span>
           </button>
-
-          <span className="px-3.5 py-2 rounded-xl bg-sky-50 text-sky-800 border border-sky-200 font-bold text-xs">
-            Total: {totalCount.toLocaleString("pt-BR")} Cooperados
-          </span>
-        </div>
-      </div>
+        }
+      />
 
       {/* Barra de Filtros e Busca */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 h-4 w-4 text-slate-400" />
           <input
@@ -159,7 +147,7 @@ export const CooperadosListPage: React.FC = () => {
       </div>
 
       {/* Tabela de Cooperados */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-24 text-center flex flex-col items-center justify-center space-y-3">
             <Loader2 className="h-8 w-8 text-sky-600 animate-spin" />
@@ -227,7 +215,7 @@ export const CooperadosListPage: React.FC = () => {
                           e.stopPropagation();
                           setSelectedCpf(item.document);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center space-x-1.5 ml-auto shadow-sm transition-all"
+                        className="px-3 py-1.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white font-bold text-xs flex items-center space-x-1.5 ml-auto shadow-sm transition-all"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         <span>Ver Ficha</span>

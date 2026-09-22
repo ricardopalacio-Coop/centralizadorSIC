@@ -63,7 +63,7 @@ export const ExcelUpload: React.FC<ExcelUploadProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm mb-8">
+    <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm mb-8">
       <div className="flex items-center space-x-3 mb-4">
         <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
           <FileSpreadsheet className="h-5 w-5" />

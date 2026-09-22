@@ -21,6 +21,12 @@ import {
   Building2,
   Landmark,
   UserCheck,
+  Edit3,
+  UserMinus,
+  UserPlus,
+  Download,
+  Layers,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface ApiToken {
@@ -135,24 +141,21 @@ export const ApiManagementPage: React.FC = () => {
   const baseUrl = `${window.location.origin}/api/v1`;
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-8 animate-in fade-in duration-300">
-      {/* Cabeçalho da Página */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="p-3.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
-            <Code className="h-8 w-8" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-2xl font-black text-slate-900">Gestão de APIs & Distribuição de Dados</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-100 text-sky-800 border border-sky-200">
-                v1.0 REST
-              </span>
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="p-2.5 bg-blue-50 rounded-xl text-[#005487]">
+              <Code className="h-8 w-8" />
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Gere tokens seguros para distribuir dados de cooperados, resumos, folhas e PDFs para sistemas externos ou agentes de IA.
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">APIs e integrações</h1>
+            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-[#005487] border border-blue-200 whitespace-nowrap">
+              {tokens.length} {tokens.length === 1 ? "token" : "tokens"}
+            </span>
           </div>
+          <p className="text-slate-500 text-lg">
+            Tokens seguros para distribuir dados de cooperados, folhas e PDFs a sistemas externos.
+          </p>
         </div>
 
         {/* Chaveador de Navegação Interna */}
@@ -161,7 +164,7 @@ export const ApiManagementPage: React.FC = () => {
             onClick={() => setSubTab("tokens")}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
               subTab === "tokens"
-                ? "bg-white text-sky-700 shadow-sm border border-slate-200"
+                ? "bg-white text-[#005487] shadow-sm border border-slate-200"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -173,7 +176,7 @@ export const ApiManagementPage: React.FC = () => {
             onClick={() => setSubTab("docs")}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
               subTab === "docs"
-                ? "bg-white text-sky-700 shadow-sm border border-slate-200"
+                ? "bg-white text-[#005487] shadow-sm border border-slate-200"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -203,7 +206,7 @@ export const ApiManagementPage: React.FC = () => {
 
           {/* Modal/Banner de Novo Token Gerado */}
           {generatedToken && (
-            <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-3 shadow-xl border border-slate-800">
+            <div className="p-6 rounded-2xl bg-slate-900 text-white space-y-3 shadow-xl border border-slate-800">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-400" />
@@ -228,7 +231,7 @@ export const ApiManagementPage: React.FC = () => {
                 />
                 <button
                   onClick={() => copyToClipboard(generatedToken, "new_generated")}
-                  className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center space-x-1 transition-all shrink-0"
+                  className="px-3 py-1.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white text-xs font-bold flex items-center space-x-1 transition-all shrink-0"
                 >
                   {copiedId === "new_generated" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>{copiedId === "new_generated" ? "Copiado!" : "Copiar Token"}</span>
@@ -238,7 +241,7 @@ export const ApiManagementPage: React.FC = () => {
           )}
 
           {/* Form de Criação de Token */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
               <Plus className="h-5 w-5 text-sky-600" />
               Gerar Novo API Token de Acesso
@@ -254,7 +257,7 @@ export const ApiManagementPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={generating || !newTokenName.trim()}
-                className="px-6 py-3 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm disabled:opacity-50"
+                className="px-6 py-3 rounded-2xl bg-[#005487] hover:bg-[#0c2856] text-white font-extrabold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm disabled:opacity-50"
               >
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
                 <span>Gerar Token</span>
@@ -263,7 +266,7 @@ export const ApiManagementPage: React.FC = () => {
           </div>
 
           {/* Tabela de Tokens de API Ativos */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-extrabold text-slate-900">Tokens Ativos e Histórico de Acesso</h2>
               <span className="text-xs font-bold text-slate-500">Total: {tokens.length} token(s)</span>
@@ -355,7 +358,7 @@ export const ApiManagementPage: React.FC = () => {
       {/* SUB-ABA 2: MANUAL COMPLETO DE UTILIZAÇÃO DA API */}
       {subTab === "docs" && (
         <div className="space-y-6">
-          <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-800 space-y-4">
+          <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-3 text-sky-400">
                 <Terminal className="h-6 w-6" />
@@ -366,7 +369,7 @@ export const ApiManagementPage: React.FC = () => {
               <a
                 href="/api/tokens/manual/pdf"
                 download="Manual_API_Centralizador_SIC_v1.pdf"
-                className="px-4 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-md shrink-0 self-start sm:self-auto"
+                className="px-4 py-2.5 rounded-2xl bg-[#005487] hover:bg-[#0c2856] text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-md shrink-0 self-start sm:self-auto"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span>Baixar Manual em PDF</span>
@@ -391,7 +394,7 @@ export const ApiManagementPage: React.FC = () => {
           {/* LISTA DE ENDPOINTS DISPONÍVEIS E DICIONÁRIO DE CAMPOS */}
           <div className="space-y-6">
             {/* ENDPOINT 1: PESQUISA */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-3">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
                 <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/pesquisar?q=12345678900</span>
@@ -428,7 +431,7 @@ export const ApiManagementPage: React.FC = () => {
             </div>
 
             {/* ENDPOINT 2: RESUMO COMPLETO DO COOPERADO */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-3">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
                 <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/resumo</span>
@@ -472,7 +475,7 @@ export const ApiManagementPage: React.FC = () => {
             </div>
 
             {/* ENDPOINT 3: LISTA DE FOLHAS DE PAGAMENTO */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-3">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
                 <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/folhas</span>
@@ -507,7 +510,7 @@ export const ApiManagementPage: React.FC = () => {
             </div>
 
             {/* ENDPOINT 4: RESUMO FINANCEIRO DE UMA FOLHA */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-3">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
                 <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/folhas/{`{PAYROLL_ID}`}/resumo-financeiro</span>
@@ -541,7 +544,7 @@ export const ApiManagementPage: React.FC = () => {
             </div>
 
             {/* ENDPOINTS 5 E 6: DOWNLOADS DE PDF */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-3">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
                 <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/folhas/{`{PAYROLL_ID}`}/demonstrativo</span>
@@ -558,6 +561,233 @@ export const ApiManagementPage: React.FC = () => {
                 <pre>{`curl -X GET "${baseUrl}/cooperados/25930187800/folhas/019fa3aa-25fc-7410-9168-af6328aa44df/demonstrativo" \\
   -H "Authorization: Bearer sic_live_..." \\
   --output demonstrativo.pdf`}</pre>
+              </div>
+            </div>
+
+            {/* SEPARADOR: MÓDULO EASYCOOP */}
+            <div className="pt-6 border-t border-slate-200">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Módulo EasyCoop (Dossiê 360°, Financeiro & eSocial)</h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Consulte o dossiê cadastral completo, histórico de fechamentos, folhas analíticas, transmissões do eSocial e gere relatórios em PDF.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ENDPOINT 7: DOSSIÊ EASYCOOP */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Retorna o **dossiê cadastral 360° completo do EasyCoop**: dados cadastrais consolidados, alocações de tomadores/contratos, dependentes, documentos e categoria eSocial (731).
+              </p>
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase text-[11px]">
+                    <tr>
+                      <th className="py-2.5 px-3">Objeto / Campo</th>
+                      <th className="py-2.5 px-3">Tipo</th>
+                      <th className="py-2.5 px-3">Descrição Detalhada</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                    <tr><td className="py-2 px-3 font-mono text-indigo-700 font-bold">easycoop.dadosPessoais</td><td className="py-2 px-3">Object</td><td className="py-2 px-3">Nome, CPF, matrícula, cargo atual, filiação, admissão, tempo de casa formatado.</td></tr>
+                    <tr><td className="py-2 px-3 font-mono text-indigo-700 font-bold">easycoop.alocacoes[]</td><td className="py-2 px-3">Array</td><td className="py-2 px-3">Histórico de tomadores, número do contrato, CBO, valor base e vigência.</td></tr>
+                    <tr><td className="py-2 px-3 font-mono text-indigo-700 font-bold">easycoop.dependentes[]</td><td className="py-2 px-3">Array</td><td className="py-2 px-3">Nome, CPF, parentesco, dedução IRRF e convênio médico dos dependentes.</td></tr>
+                    <tr><td className="py-2 px-3 font-mono text-indigo-700 font-bold">easycoop.categoriaEsocial</td><td className="py-2 px-3">Object</td><td className="py-2 px-3">Código oficial (731) e descrição governamental da categoria cooperado.</td></tr>
+                    <tr><td className="py-2 px-3 font-mono text-indigo-700 font-bold">easycoop.resumoFinanceiro</td><td className="py-2 px-3">Object</td><td className="py-2 px-3">Consolidado recente de produção bruta, descontos totais e líquido repassado.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-slate-900 text-sky-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X GET "${baseUrl}/cooperados/25930187800/easycoop" \\
+  -H "Authorization: Bearer sic_live_..."`}</pre>
+              </div>
+            </div>
+
+            {/* ENDPOINT 8: HISTÓRICO FINANCEIRO EASYCOOP */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/financeiro?ano=2026&mes=7</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Retorna o **histórico financeiro completo** do cooperado no EasyCoop com métricas agregadas e filtros por ano, mês ou tomador.
+              </p>
+
+              <div className="bg-slate-900 text-sky-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X GET "${baseUrl}/cooperados/25930187800/easycoop/financeiro?ano=2026" \\
+  -H "Authorization: Bearer sic_live_..."`}</pre>
+              </div>
+            </div>
+
+            {/* ENDPOINT 9: FOLHA ANALÍTICA & ESOCIAL EASYCOOP */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/folha?ano=2026&mes=7&folha=1</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/esocial?ano=2026</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Consulta a folha analítica com cálculo de rubricas e espelho oficial do eSocial (eventos S-1200, S-1210 com protocolos e recibos).
+              </p>
+            </div>
+
+            {/* ENDPOINT 10: PDFS DO EASYCOOP */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/pdf/ficha</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/pdf/folha</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/pdf/lancamentos</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/easycoop/pdf/esocial</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Gera e transmite relatórios oficiais em PDF (`application/pdf`) do EasyCoop: Ficha Cadastral, Demonstrativo de Produtividade em lote, Extrato de Rubricas e Relatório do eSocial.
+              </p>
+            </div>
+
+            {/* SEPARADOR: TERMOS DE DESLIGAMENTO E ADESÃO */}
+            <div className="pt-6 border-t border-slate-200">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
+                  <UserMinus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Termos de Desligamento & Proposta de Adesão Easy</h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Consulte o status na API M2M da Coopedu e obtenha os PDFs oficiais dos termos de desligamento e propostas de adesão.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ENDPOINT 11: STATUS DESLIGAMENTO E ADESÃO */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/desligamento</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Consulta unificada de status do pedido de desligamento e proposta de adesão vinculada ao cooperado na API Coopedu.
+              </p>
+
+              <div className="bg-slate-900 text-sky-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X GET "${baseUrl}/cooperados/25930187800/desligamento" \\
+  -H "Authorization: Bearer sic_live_..."`}</pre>
+              </div>
+            </div>
+
+            {/* ENDPOINT 12: PDFS DOS TERMOS */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">GET</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/desligamento/termo-pdf</span>
+                <span className="font-mono text-xs font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/adesao/termo-pdf</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Transmite os PDFs oficiais dos termos assinados/gerados: **Termo de Desligamento** e **Proposta / Termo de Adesão Easy**.
+              </p>
+
+              <div className="bg-slate-900 text-sky-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X GET "${baseUrl}/cooperados/25930187800/desligamento/termo-pdf" \\
+  -H "Authorization: Bearer sic_live_..." \\
+  --output termo-desligamento.pdf`}</pre>
+              </div>
+            </div>
+
+            {/* SEPARADOR: EDIÇÃO DE CAMPOS DO SIC */}
+            <div className="pt-6 border-t border-slate-200">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  <Edit3 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Edição & Sincronização de Campos no SIC Oficial</h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Atualize os dados cadastrais do cooperado com sanitização rígida, salvamento no MySQL e sincronização síncrona com o portal oficial do SIC.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ENDPOINT 13: EDIÇÃO CADASTRAL SIC */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900 font-black text-xs">PUT</span>
+                <span className="font-mono text-sm font-bold text-slate-900">/api/v1/cooperados/{`{CPF}`}/sic</span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium">
+                Atualiza os campos cadastrais do cooperado. O endpoint executa o fluxo seguro de **GET da ficha completa**, aplica os novos valores com sanitização estrita, salva no banco local e envia o **PUT para o SIC oficial (`ui.coopedu.app.br`)**.
+              </p>
+
+              {/* Tabela de Campos Aceitos no PUT */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase text-[11px]">
+                    <tr>
+                      <th className="py-2.5 px-3">Campo JSON</th>
+                      <th className="py-2.5 px-3">Formato Exigido</th>
+                      <th className="py-2.5 px-3">Exemplo Válido</th>
+                      <th className="py-2.5 px-3">Descrição / Regra de Higienização</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                    <tr>
+                      <td className="py-2 px-3 font-mono text-sky-700 font-bold">email</td>
+                      <td className="py-2 px-3">String</td>
+                      <td className="py-2 px-3 font-mono text-emerald-700">"cooperado@exemplo.com"</td>
+                      <td className="py-2 px-3">Convertido automaticamente para minúsculas sem espaços.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-mono text-sky-700 font-bold">whatsapp</td>
+                      <td className="py-2 px-3">String numérico</td>
+                      <td className="py-2 px-3 font-mono text-emerald-700">"88999998888"</td>
+                      <td className="py-2 px-3">11 dígitos com DDD (qualquer caractere especial é removido).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-mono text-sky-700 font-bold">birth_date</td>
+                      <td className="py-2 px-3">ISO 8601 ou BR</td>
+                      <td className="py-2 px-3 font-mono text-emerald-700">"1990-05-15T00:00:00.000Z"</td>
+                      <td className="py-2 px-3">Suporta "15/05/1990" ou ISO UTC; formatado para o padrão do SIC.</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-mono text-sky-700 font-bold">rg</td>
+                      <td className="py-2 px-3">String simples</td>
+                      <td className="py-2 px-3 font-mono text-emerald-700">"2002010123456"</td>
+                      <td className="py-2 px-3">O SIC exige string simples no PUT (objetos aninhados são convertidos).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-mono text-sky-700 font-bold">street, number, neighborhood, city, state, zip_code</td>
+                      <td className="py-2 px-3">Strings</td>
+                      <td className="py-2 px-3 font-mono text-emerald-700">"Rua Flores", "100", "Centro"</td>
+                      <td className="py-2 px-3">Campos de endereço residencial atualizados simultaneamente no SIC e MySQL.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-slate-900 text-sky-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X PUT "${baseUrl}/cooperados/25930187800/sic" \\
+  -H "Authorization: Bearer sic_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "email": "cooperado.novo@coopedu.com.br",
+    "whatsapp": "88998887766",
+    "birth_date": "1992-08-20T00:00:00.000Z"
+  }'`}</pre>
               </div>
             </div>
           </div>

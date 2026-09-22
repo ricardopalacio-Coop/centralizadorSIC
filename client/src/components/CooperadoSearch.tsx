@@ -44,7 +44,7 @@ export const CooperadoSearch: React.FC<CooperadoSearchProps> = ({
   return (
     <div className="space-y-6">
       {/* Campo de Pesquisa Único no Dashboard */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-3">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
           Pesquisa de Cooperado (CPF ou Nome Completo)
         </label>
@@ -63,7 +63,7 @@ export const CooperadoSearch: React.FC<CooperadoSearchProps> = ({
 
       {/* Se houver múltiplos resultados (ex: busca por nome), exibe seletores rápidos */}
       {cooperados.length > 1 && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block">
             Cooperados Encontrados na Busca - Clique para Exibir
           </span>

@@ -357,24 +357,21 @@ export const FichasCadastraisPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-300">
-      {/* Cabeçalho Principal */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="p-3.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
-            <FolderArchive className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-extrabold text-slate-900">Fichas Cadastrais</h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Extração OCR Ativa
-              </span>
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="p-2.5 bg-blue-50 rounded-xl text-[#005487]">
+              <FolderArchive className="h-8 w-8" />
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Consulta, leitura inteligente e download de fichas do Google Drive (Arquivo, assinacoop e Gravatá)
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Fichas cadastrais</h1>
+            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-[#005487] border border-blue-200 whitespace-nowrap">
+              {metrics.total.toLocaleString("pt-BR")} arquivos
+            </span>
           </div>
+          <p className="text-slate-500 text-lg">
+            Consulta, leitura por OCR e download de fichas do Google Drive (Arquivo, assinacoop e Gravatá).
+          </p>
         </div>
 
         <div className="flex wrap items-center gap-2.5">
@@ -383,7 +380,7 @@ export const FichasCadastraisPage: React.FC = () => {
             <button
               onClick={() => handleStartScan(false)}
               disabled={startingScan || scanStatus?.isScanning}
-              className="px-3.5 py-2.5 rounded-l-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all"
+              className="px-3.5 py-2.5 rounded-l-xl bg-[#005487] hover:bg-[#0c2856] disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all"
               title="Lê somente os arquivos pendentes que ainda não têm CPF identificado"
             >
               {startingScan || scanStatus?.isScanning ? (
@@ -499,7 +496,7 @@ export const FichasCadastraisPage: React.FC = () => {
           <button
             onClick={handleSync}
             disabled={syncing || loading || scanStatus?.isScanning}
-            className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm"
+            className="px-4 py-2.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all shadow-sm"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
             <span>{syncing ? "Sincronizando..." : "Sincronizar Catálogo"}</span>
@@ -531,7 +528,7 @@ export const FichasCadastraisPage: React.FC = () => {
 
       {/* Banner de Varredura em Andamento */}
       {scanStatus && scanStatus.isScanning && (
-        <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-blue-50 border border-indigo-200 p-5 rounded-3xl shadow-sm space-y-3 animate-pulse">
+        <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-blue-50 border border-indigo-200 p-5 rounded-2xl shadow-sm space-y-3 animate-pulse">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-xl bg-indigo-600 text-white animate-spin">
@@ -575,7 +572,7 @@ export const FichasCadastraisPage: React.FC = () => {
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
           <div className="p-3 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
             <FolderArchive className="h-6 w-6" />
           </div>
@@ -589,7 +586,7 @@ export const FichasCadastraisPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
           <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200">
             <CheckCircle2 className="h-6 w-6" />
           </div>
@@ -603,7 +600,7 @@ export const FichasCadastraisPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
           <div className="p-3 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
             <AlertTriangle className="h-6 w-6" />
           </div>
@@ -617,7 +614,7 @@ export const FichasCadastraisPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
           <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200">
             <Fingerprint className="h-6 w-6" />
           </div>
@@ -638,7 +635,7 @@ export const FichasCadastraisPage: React.FC = () => {
 
       {/* Alerta se credenciais não estiverem configuradas */}
       {driveStatus && !driveStatus.configured && (
-        <div className="p-5 bg-amber-50 border border-amber-300 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="p-5 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start space-x-3">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
@@ -668,7 +665,7 @@ export const FichasCadastraisPage: React.FC = () => {
       )}
 
       {/* Barra de Filtros, Pesquisa e Controles */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
         {/* Busca por Nome ou CPF */}
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
@@ -772,7 +769,7 @@ export const FichasCadastraisPage: React.FC = () => {
       </div>
 
       {/* Tabela de Fichas Cadastrais */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-24 text-center flex flex-col items-center justify-center space-y-3">
             <Loader2 className="h-8 w-8 text-sky-600 animate-spin" />
@@ -968,7 +965,7 @@ export const FichasCadastraisPage: React.FC = () => {
       {/* Modal de Instruções de Credenciais */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 p-6 relative space-y-5">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 p-6 relative space-y-5">
             <button
               onClick={() => setShowHelpModal(false)}
               className="absolute right-5 top-5 p-1.5 rounded-xl hover:bg-slate-100 text-slate-400"

@@ -12,14 +12,15 @@ import { FichasCadastraisPage } from "./pages/FichasCadastraisPage";
 import { FichasDesligamentoPage } from "./pages/FichasDesligamentoPage";
 import { EasyCoopPage } from "./pages/EasyCoopPage";
 import { DossiePage } from "./pages/DossiePage";
-import { Navbar, NavTabType } from "./components/Navbar";
+import { Layout } from "./components/Layout";
+import { NavTabType } from "./components/Sidebar";
 import { Loader2 } from "lucide-react";
 
 const MainContent: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabType>("dashboard");
 
-  // Bloqueio de segurança: se o usuário não for SuperAdmin e tentar acessar abas do Setup, redireciona para o dashboard
+  // Bloqueio de seguranca: so o SuperAdmin abre as telas de configuracao.
   useEffect(() => {
     if (user && user.role !== "SUPER_ADMIN" && (activeTab === "apis" || activeTab === "users")) {
       setActiveTab("dashboard");
@@ -28,8 +29,8 @@ const MainContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="h-10 w-10 text-sky-600 animate-spin" />
+      <div className="min-h-screen app-shell-bg flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="h-10 w-10 text-[#005487] animate-spin" />
         <p className="text-sm font-medium text-slate-600">Verificando sessão segura...</p>
       </div>
     );
@@ -40,23 +41,20 @@ const MainContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col selection:bg-sky-500 selection:text-white">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="flex-1 bg-slate-100">
-        {activeTab === "dashboard" && <DashboardPage />}
-        {activeTab === "dossier" && <DossiePage />}
-        {activeTab === "easycoop-cooperado" && <EasyCoopPage initialMode="cooperado" />}
-        {activeTab === "easycoop-contrato" && <EasyCoopPage initialMode="contrato" />}
-        {activeTab === "cooperados" && <CooperadosListPage />}
-        {activeTab === "fichas" && <FichasCadastraisPage />}
-        {activeTab === "fichas-desligamento" && <FichasDesligamentoPage />}
-        {activeTab === "importacao" && <ImportacaoPage />}
-        {activeTab === "desligamento" && <DesligamentoPage />}
-        {activeTab === "plugsign" && <PlugSignPage />}
-        {activeTab === "apis" && user.role === "SUPER_ADMIN" && <ApiManagementPage />}
-        {activeTab === "users" && user.role === "SUPER_ADMIN" && <UsersPage />}
-      </main>
-    </div>
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+      {activeTab === "dashboard" && <DashboardPage />}
+      {activeTab === "dossier" && <DossiePage />}
+      {activeTab === "easycoop-cooperado" && <EasyCoopPage initialMode="cooperado" />}
+      {activeTab === "easycoop-contrato" && <EasyCoopPage initialMode="contrato" />}
+      {activeTab === "cooperados" && <CooperadosListPage />}
+      {activeTab === "fichas" && <FichasCadastraisPage />}
+      {activeTab === "fichas-desligamento" && <FichasDesligamentoPage />}
+      {activeTab === "importacao" && <ImportacaoPage />}
+      {activeTab === "desligamento" && <DesligamentoPage />}
+      {activeTab === "plugsign" && <PlugSignPage />}
+      {activeTab === "apis" && user.role === "SUPER_ADMIN" && <ApiManagementPage />}
+      {activeTab === "users" && user.role === "SUPER_ADMIN" && <UsersPage />}
+    </Layout>
   );
 };
 

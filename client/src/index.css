@@ -1,55 +1,204 @@
+/* =============================================================================
+   Design tokens SiC / Coopedu — Tailwind v4
+   Mesmo conjunto que o HelpDesk Coopedu usa em producao.
+   ============================================================================= */
+
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Situacao do cooperado / do termo */
+  --color-status-ativo: var(--status-ativo);
+  --color-status-em-analise: var(--status-em-analise);
+  --color-status-aguardando: var(--status-aguardando);
+  --color-status-concluido: var(--status-concluido);
+  --color-status-desligado: var(--status-desligado);
+}
+
+:root {
+  /* Marca Coopedu: #0c2856 azul escuro - #005487 azul medio - #00b7ff ciano - #3ab54a verde */
+  --primary: #005487;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #0c2856;
+  --sidebar-primary-foreground: #ffffff;
+  --chart-1: #005487;
+  --chart-2: #00b7ff;
+  --chart-3: #3ab54a;
+  --chart-4: #0c2856;
+  --chart-5: #eab308;
+  --radius: 0.65rem;
+  --background: #ffffff;
+  --foreground: #3d3d3d;
+  --card: #ffffff;
+  --card-foreground: #3d3d3d;
+  --popover: #ffffff;
+  --popover-foreground: #3d3d3d;
+  --secondary: #f8fafc;
+  --secondary-foreground: #64748b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #3b82f6;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3d3d3d;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #3b82f6;
+
+  --status-ativo: #3ab54a;
+  --status-em-analise: #00b7ff;
+  --status-aguardando: #eab308;
+  --status-concluido: #005487;
+  --status-desligado: #94a3b8;
+}
+
+.dark {
+  --primary: #1d4ed8;
+  --primary-foreground: #eff6ff;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #eff6ff;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --secondary: #334155;
+  --secondary-foreground: #cbd5e1;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #334155;
+  --accent-foreground: #f8fafc;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #2563eb;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-accent: #334155;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #2563eb;
+}
 
 @layer base {
   body {
-    background-color: #f1f5f9; /* Cinza claro elegante */
-    color: #0f172a;
-    font-family: 'Inter', sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
     min-height: 100vh;
-    text-transform: uppercase;
   }
 
-  input,
-  textarea,
-  select,
-  pre,
-  code,
-  .preserve-text,
-  .preserve-case,
-  .pdf-viewer-modal,
-  [data-preserve-case] {
-    text-transform: none;
+  /* Tudo que e clicavel tem cursor de mao: regra da casa. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
-/* Custom light scrollbars */
+@layer components {
+  /* Fundo institucional do shell (imagem clara com formas da marca). */
+  .app-shell-bg {
+    background-color: #eef2f7;
+    background-image: url("/fundo-sic.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .dark .app-shell-bg {
+    background-image: none;
+    background-color: #0f172a;
+  }
+
+  /* Rolagem fina para paineis internos. */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+}
+
+/* Rolagem clara do documento */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #e2e8f0;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Light Theme Glassmorphism & Cards */
-.glass-panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
+/* Cartoes: mantidos por compatibilidade com telas antigas. */
+.glass-panel,
 .glass-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06);
 }

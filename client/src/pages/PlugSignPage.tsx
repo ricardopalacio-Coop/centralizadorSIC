@@ -218,33 +218,28 @@ export const PlugSignPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-300">
-      {/* Banner Principal */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
-              <FileCheck2 className="h-7 w-7" />
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="p-2.5 bg-blue-50 rounded-xl text-[#005487]">
+              <FileCheck2 className="h-8 w-8" />
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-                PlugSign Analisador
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
-                  Automação Inteligente
-                </span>
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Inspeção automática de links na <strong>Coluna I</strong> e preenchimento da <strong>Coluna J</strong> com destaque amarelo para assinados.
-              </p>
-            </div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">PlugSign</h1>
+            {totalRows > 0 && (
+              <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-[#005487] border border-blue-200 whitespace-nowrap">
+                {processedRows.toLocaleString("pt-BR")} de {totalRows.toLocaleString("pt-BR")} linhas
+              </span>
+            )}
           </div>
+          <p className="text-slate-500 text-lg">
+            Inspeção automática dos links da coluna I e preenchimento da coluna J, com destaque para os assinados.
+          </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span>Fechamento imediato de abas (RAM Segura)</span>
-          </div>
+        <div className="flex items-center gap-2 h-11 px-4 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 shrink-0">
+          <ShieldCheck className="h-4 w-4 text-[#3ab54a]" />
+          <span>Fechamento imediato de abas</span>
         </div>
       </div>
 
@@ -288,7 +283,7 @@ export const PlugSignPage: React.FC = () => {
       </div>
 
       {/* Seção de Upload & Controle */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
         <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5 text-sky-600" />
           Upload da Planilha Excel
@@ -299,7 +294,7 @@ export const PlugSignPage: React.FC = () => {
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-300 hover:border-amber-500 hover:bg-amber-50/30 transition-all rounded-3xl p-8 sm:p-12 text-center cursor-pointer flex flex-col items-center justify-center space-y-3 group"
+            className="border-2 border-dashed border-slate-300 hover:border-amber-500 hover:bg-amber-50/30 transition-all rounded-2xl p-8 sm:p-12 text-center cursor-pointer flex flex-col items-center justify-center space-y-3 group"
           >
             <div className="p-4 rounded-2xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform duration-200 border border-amber-100">
               <UploadCloud className="h-8 w-8" />
@@ -382,7 +377,7 @@ export const PlugSignPage: React.FC = () => {
 
       {/* Painel de Progresso & Métricas */}
       {(isProcessing || isCompleted || results.length > 0) && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">

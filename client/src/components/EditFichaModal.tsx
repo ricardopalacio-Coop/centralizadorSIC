@@ -149,7 +149,7 @@ export const EditFichaModal: React.FC<EditFichaModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl p-6 relative animate-in zoom-in-95 duration-150">
+      <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl p-6 relative animate-in zoom-in-95 duration-150">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
@@ -303,7 +303,7 @@ export const EditFichaModal: React.FC<EditFichaModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 shadow-sm transition-all"
+              className="px-5 py-2.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 shadow-sm transition-all"
             >
               {loading ? (
                 <>

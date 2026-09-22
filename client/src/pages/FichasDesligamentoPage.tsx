@@ -334,24 +334,21 @@ export const FichasDesligamentoPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-300">
-      {/* Cabeçalho Principal */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
-            <FolderArchive className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-extrabold text-slate-900">Fichas de Desligamento</h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                Google Drive Integrado
-              </span>
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="p-2.5 bg-blue-50 rounded-xl text-[#005487]">
+              <FolderArchive className="h-8 w-8" />
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Consulta, leitura inteligente, extração de CPF e download de termos de desligamento
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Fichas de desligamento</h1>
+            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-[#005487] border border-blue-200 whitespace-nowrap">
+              {metrics.total.toLocaleString("pt-BR")} arquivos
+            </span>
           </div>
+          <p className="text-slate-500 text-lg">
+            Consulta, leitura por OCR, extração de CPF e download de termos de desligamento.
+          </p>
         </div>
 
         <div className="flex wrap items-center gap-2.5">
@@ -360,7 +357,7 @@ export const FichasDesligamentoPage: React.FC = () => {
             <button
               onClick={() => handleStartScan(false)}
               disabled={startingScan || scanStatus?.isScanning}
-              className="px-3.5 py-2.5 rounded-l-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all"
+              className="px-3.5 py-2.5 rounded-l-xl bg-[#005487] hover:bg-[#0c2856] disabled:opacity-50 text-white font-extrabold text-xs flex items-center space-x-2 transition-all"
               title="Lê somente os arquivos pendentes que ainda não têm CPF identificado"
             >
               {startingScan || scanStatus?.isScanning ? (
@@ -498,7 +495,7 @@ export const FichasDesligamentoPage: React.FC = () => {
 
       {/* Banner de Varredura em Andamento */}
       {scanStatus && scanStatus.isScanning && (
-        <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 p-5 rounded-3xl shadow-sm space-y-3 animate-pulse">
+        <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 p-5 rounded-2xl shadow-sm space-y-3 animate-pulse">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-xl bg-rose-600 text-white animate-spin">
@@ -609,7 +606,7 @@ export const FichasDesligamentoPage: React.FC = () => {
       </div>
 
       {/* Painel de Filtros e Busca */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
           {/* Busca por Nome, CPF ou Arquivo */}
           <div className="relative w-full md:w-96">
@@ -689,7 +686,7 @@ export const FichasDesligamentoPage: React.FC = () => {
       </div>
 
       {/* Tabela de Arquivos */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>

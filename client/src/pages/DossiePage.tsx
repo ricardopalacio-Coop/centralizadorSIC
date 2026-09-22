@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import * as XLSX from "xlsx";
 import {
   Search,
@@ -483,56 +484,34 @@ export const DossiePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/20 to-slate-100/60 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* CABEÇALHO DO MÓDULO */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/20">
-              <FolderArchive className="h-7 w-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  Dossiê do Cooperado
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 text-sky-700 border border-sky-200">
-                  EasyCoop & SIC Core
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Geração consolidada em PDF (Extrato de Repasses + Demonstrativo de Produtividade + Ficha de Adesão)
-              </p>
-            </div>
-          </div>
-
-          {/* SELETOR DE ABAS PRINCIPAIS */}
-          <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 self-start md:self-auto">
+    <div className="w-full max-w-6xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={FolderArchive}
+        titulo="Dossiê do Cooperado"
+        descricao="Extrato de repasses, demonstrativo de produtividade e ficha de adesão em um único PDF."
+        acoes={
+          <div className="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
             <button
               onClick={() => setActiveTab("individual")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "individual"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "individual" ? "bg-white text-[#005487] shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Search className="h-4 w-4 text-sky-600" />
-              <span>Consulta Individual</span>
+              <Search className="h-4 w-4" />
+              <span>Consulta individual</span>
             </button>
-
             <button
               onClick={() => setActiveTab("lote")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "lote"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "lote" ? "bg-white text-[#005487] shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
-              <span>Processamento em Lote (CSV/XLS)</span>
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Em lote (CSV/XLS)</span>
             </button>
           </div>
-        </div>
+        }
+      />
 
         {/* ========================================================================= */}
         {/* CONTEÚDO DA ABA 1: CONSULTA INDIVIDUAL                                    */}
@@ -540,7 +519,7 @@ export const DossiePage: React.FC = () => {
         {activeTab === "individual" && (
           <>
             {/* CAMPO DE PESQUISA INTELIGENTE (CPF OU NOME) */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
                 Localizar Cooperado para Geração do Dossiê
               </label>
@@ -629,7 +608,7 @@ export const DossiePage: React.FC = () => {
 
             {/* ESTADO DE CARREGAMENTO */}
             {infoLoading && (
-              <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center space-y-3 text-slate-500">
+              <div className="bg-white rounded-2xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center space-y-3 text-slate-500">
                 <Loader2 className="h-8 w-8 animate-spin text-sky-600" />
                 <p className="text-sm font-medium">Localizando dados completos e documentos do cooperado...</p>
               </div>
@@ -637,7 +616,7 @@ export const DossiePage: React.FC = () => {
 
             {/* ESTADO DE ERRO */}
             {infoError && !infoLoading && (
-              <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 text-rose-800 flex items-start space-x-3">
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-rose-800 flex items-start space-x-3">
                 <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
                 <div>
                   <h3 className="text-sm font-bold">Não foi possível carregar o cooperado</h3>
@@ -648,7 +627,7 @@ export const DossiePage: React.FC = () => {
 
             {/* CARD DO COOPERADO SELECIONADO */}
             {dossierInfo && !infoLoading && (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
                 {/* TOPO DO CARD */}
                 <div className="p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center space-x-4">
@@ -879,7 +858,7 @@ export const DossiePage: React.FC = () => {
             {/* MODAL DE CONFIRMAÇÃO: FICHA DE ADESÃO AUSENTE */}
             {showMissingFichaModal && dossierInfo && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
                   <div className="flex items-start space-x-4">
                     <div className="p-3 rounded-2xl bg-amber-100 text-amber-700 shrink-0">
                       <AlertTriangle className="h-6 w-6" />
@@ -941,7 +920,7 @@ export const DossiePage: React.FC = () => {
                   handleFileUpload(e.dataTransfer.files[0]);
                 }
               }}
-              className={`bg-white rounded-3xl p-8 border-2 border-dashed transition-all text-center flex flex-col items-center justify-center space-y-4 shadow-sm ${
+              className={`bg-white rounded-2xl p-8 border-2 border-dashed transition-all text-center flex flex-col items-center justify-center space-y-4 shadow-sm ${
                 isDragging
                   ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]"
                   : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
@@ -977,7 +956,7 @@ export const DossiePage: React.FC = () => {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={batchParsing || batchProgress.isRunning}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-[#005487] hover:bg-[#0c2856] text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {batchParsing ? "Analisando Planilha..." : "Selecionar Arquivo"}
                 </button>
@@ -991,7 +970,7 @@ export const DossiePage: React.FC = () => {
 
             {/* ESTADO DE PARSING / AUDITORIA */}
             {batchParsing && (
-              <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center space-y-3 text-slate-500">
+              <div className="bg-white rounded-2xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center space-y-3 text-slate-500">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
                 <p className="text-sm font-bold text-slate-800">Auditando cooperados nas bases SIC e EasyCoop...</p>
                 <p className="text-xs text-slate-400">Verificando CPFs, Extratos, Demonstrativos e Fichas de Adesão...</p>
@@ -1000,7 +979,7 @@ export const DossiePage: React.FC = () => {
 
             {/* BARRA DE PROGRESSO DE DOWNLOAD EM LOTE */}
             {batchProgress.isRunning && (
-              <div className="bg-white rounded-3xl p-6 border border-indigo-200 shadow-lg space-y-3 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl p-6 border border-indigo-200 shadow-lg space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
@@ -1032,7 +1011,7 @@ export const DossiePage: React.FC = () => {
 
             {/* ALERTA DE SUCESSO DE GERAÇÃO EM LOTE */}
             {batchProgress.completed && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 flex items-center justify-between animate-in fade-in duration-200">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between animate-in fade-in duration-200">
                 <div className="flex items-center space-x-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   <span className="text-xs font-bold text-emerald-800">
@@ -1118,7 +1097,7 @@ export const DossiePage: React.FC = () => {
                 </div>
 
                 {/* TABELA DE COOPERADOS EM LOTE */}
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-slate-700 divide-y divide-slate-200">
                       <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-wider">
@@ -1284,7 +1263,6 @@ export const DossiePage: React.FC = () => {
           customFilename={pdfModal.filename}
           docType="ficha"
         />
-      </div>
     </div>
   );
 };

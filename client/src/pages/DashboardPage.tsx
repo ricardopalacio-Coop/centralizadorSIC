@@ -3,6 +3,7 @@ import { CooperadoSearch, Cooperado } from "../components/CooperadoSearch";
 import { InlineCooperadoView } from "../components/InlineCooperadoView";
 import { EasyCoopCooperadoDossier } from "../components/EasyCoopCooperadoDossier";
 import { PdfViewerModal } from "../components/PdfViewerModal";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import { UserCheck, Search, Layers, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export const DashboardPage: React.FC = () => {
@@ -111,7 +112,14 @@ export const DashboardPage: React.FC = () => {
   }, [selectedCpf]);
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-6 animate-in fade-in duration-300">
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={UserCheck}
+        titulo="Pesquisa Cooperado"
+        descricao="Consulta unificada das bases SIC e EasyCoop por CPF, nome ou matrícula."
+        contador={query.trim() ? `${cooperados.length} ${cooperados.length === 1 ? "resultado" : "resultados"}` : undefined}
+      />
+
       {/* Campo Único de Pesquisa no Dashboard */}
       <CooperadoSearch
         query={query}
@@ -125,13 +133,13 @@ export const DashboardPage: React.FC = () => {
       {/* Exibição condicional com base na existência de dados no SIC e EasyCoop */}
       {selectedCpf ? (
         statusLoading ? (
-          <div className="bg-white p-14 rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
+          <div className="bg-white p-14 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
             <Loader2 className="h-8 w-8 text-sky-600 animate-spin" />
             <p className="text-xs font-semibold text-slate-600">Verificando bases de dados oficiais...</p>
           </div>
         ) : !cooperadoStatus?.hasSicData && !cooperadoStatus?.hasEasycoopData ? (
-          <div className="bg-white p-12 sm:p-16 rounded-3xl border border-slate-200 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
-            <div className="p-4 rounded-3xl bg-amber-50 text-amber-600 border border-amber-200">
+          <div className="bg-white p-12 sm:p-16 rounded-2xl border border-slate-200 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
               <AlertCircle className="h-10 w-10" />
             </div>
             <div className="max-w-md space-y-1">
@@ -210,8 +218,8 @@ export const DashboardPage: React.FC = () => {
           </div>
         )
       ) : (
-        <div className="bg-white p-12 sm:p-16 rounded-3xl border border-slate-200 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
-          <div className="p-4 rounded-3xl bg-sky-50 text-sky-600 border border-sky-200">
+        <div className="bg-white p-12 sm:p-16 rounded-2xl border border-slate-200 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
+          <div className="p-4 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
             <Search className="h-10 w-10" />
           </div>
           <div className="max-w-md space-y-1">

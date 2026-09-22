@@ -42,7 +42,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 pdf-viewer-modal">
-      <div className="bg-white w-full max-w-5xl h-[92vh] rounded-3xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden relative">
+      <div className="bg-white w-full max-w-5xl h-[92vh] rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden relative">
         {/* Topbar do Leitor */}
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-3">

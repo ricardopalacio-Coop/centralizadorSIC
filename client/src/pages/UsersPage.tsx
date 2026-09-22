@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import { useAuth } from "../context/AuthContext";
 import {
   Users,
@@ -199,16 +200,13 @@ export const UsersPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-8 animate-in fade-in duration-300">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 rounded-2xl bg-sky-50 text-sky-700 border border-sky-200">
-          <Users className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Gestão de Usuários & Permissões</h1>
-          <p className="text-xs text-slate-500 font-medium">Cadastre novos operadores ou altere senhas de acesso ao sistema</p>
-        </div>
-      </div>
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={Users}
+        titulo="Usuários"
+        descricao="Cadastre operadores, defina perfis e altere senhas de acesso ao sistema."
+        contador={`${users.length} ${users.length === 1 ? "usuário" : "usuários"}`}
+      />
 
       {/* Alertas */}
       {error && (
@@ -227,7 +225,7 @@ export const UsersPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Formulário de Cadastro */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center space-x-2 text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
             <UserPlus className="h-4 w-4 text-sky-600" />
             <span>Cadastrar Novo Usuário</span>
@@ -295,7 +293,7 @@ export const UsersPage: React.FC = () => {
             <button
               type="submit"
               disabled={createLoading}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 mt-2"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-[#005487] hover:bg-[#0c2856] active:bg-sky-800 transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 mt-2"
             >
               {createLoading ? "Cadastrando..." : "Cadastrar Usuário"}
             </button>
@@ -303,7 +301,7 @@ export const UsersPage: React.FC = () => {
         </div>
 
         {/* Tabela de Usuários Cadastrados */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
             Usuários Cadastrados no Sistema ({users.length})
           </h3>
@@ -410,7 +408,7 @@ export const UsersPage: React.FC = () => {
       {/* Modal para Troca de Senha de Outro Usuário */}
       {resetUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4">
+          <div className="bg-white w-full max-w-md p-6 rounded-2xl border border-slate-200 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
               <KeyRound className="h-5 w-5 text-amber-500" />
               <span>Redefinir Senha de {resetUser.name}</span>
@@ -457,7 +455,7 @@ export const UsersPage: React.FC = () => {
       {/* Modal para Alteração de Perfil de Acesso */}
       {roleModalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-lg p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-5">
+          <div className="bg-white w-full max-w-lg p-6 rounded-2xl border border-slate-200 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2.5">
                 <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200">
@@ -583,7 +581,7 @@ export const UsersPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={roleLoading || selectedRole === roleModalUser.role}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 flex items-center space-x-2"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#005487] hover:bg-[#0c2856] active:bg-sky-800 transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 flex items-center space-x-2"
                 >
                   {roleLoading ? (
                     <span>Salvando...</span>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import {
   Search,
   Briefcase,
@@ -273,54 +274,34 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-8 animate-in fade-in duration-300">
-      {/* ========================================================================= */}
-      {/* CABEÇALHO DO MÓDULO EASYCOOP */}
-      {/* ========================================================================= */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex items-center space-x-3.5">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20">
-            <Layers className="h-7 w-7" />
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={Layers}
+        titulo="EasyCoop Analytics"
+        descricao="Consulta analítica da base oficial: cooperados, repasses por período, folha e e-Social."
+        acoes={
+          <div className="flex items-center p-1.5 rounded-xl bg-slate-100 border border-slate-200">
+            <button
+              onClick={() => setMode("cooperado")}
+              className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                mode === "cooperado" ? "bg-white text-[#005487] shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <UserCheck className="h-4 w-4" />
+              <span>Cooperado</span>
+            </button>
+            <button
+              onClick={() => setMode("contrato")}
+              className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                mode === "contrato" ? "bg-white text-[#005487] shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Briefcase className="h-4 w-4" />
+              <span>Contrato</span>
+            </button>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">EasyCoop Analytics</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
-                ERP COOP01
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Consulta integrada e analítica da base oficial: cooperados, repasses por período, folha e e-Social.
-            </p>
-          </div>
-        </div>
-
-        {/* Alternador de Modo: Cooperado vs Contrato */}
-        <div className="flex items-center p-1.5 rounded-2xl bg-slate-100 border border-slate-200 self-stretch sm:self-auto">
-          <button
-            onClick={() => setMode("cooperado")}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              mode === "cooperado"
-                ? "bg-white text-sky-700 shadow-sm border border-slate-200/80"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <UserCheck className="h-4 w-4 text-sky-600" />
-            <span>Cooperado</span>
-          </button>
-          <button
-            onClick={() => setMode("contrato")}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              mode === "contrato"
-                ? "bg-white text-indigo-700 shadow-sm border border-slate-200/80"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Briefcase className="h-4 w-4 text-indigo-600" />
-            <span>Contrato</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* ========================================================================= */}
       {/* MODO 1: COOPERADO */}
@@ -328,7 +309,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
       {mode === "cooperado" && (
         <div className="space-y-6">
           {/* Caixa de Busca de Cooperados */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
               Pesquisa de Cooperado no EasyCoop (CPF ou Nome Completo)
             </label>
@@ -347,7 +328,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
 
           {/* Seletores Rápidos de Resultados (3.1: Selecionar e atualizar tela imediatamente) */}
           {coopSearchResults.length > 0 && (
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block">
                 {coopSearchResults.length} Cooperado(s) Encontrado(s) - Clique para Visualizar:
               </span>
@@ -400,7 +381,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
       {/* ========================================================================= */}
       {mode === "contrato" && (
         <div className="space-y-6">
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
               Pesquisa de Contratos (Nome do Contrato, Prefeitura/Tomador ou Número do Documento)
             </label>
@@ -421,7 +402,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                   Contratos Encontrados ({contratosTotal})
@@ -506,13 +487,13 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
             {/* Painel de Detalhes do Contrato e Cooperados Alocados */}
             <div className="lg:col-span-2 space-y-6">
               {contratoDetailsLoading ? (
-                <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
+                <div className="bg-white p-16 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
                   <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
                   <p className="text-xs font-semibold text-slate-600">Carregando detalhes do contrato...</p>
                 </div>
               ) : contratoDetails ? (
                 <>
-                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl space-y-4">
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 rounded-2xl text-white shadow-xl space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
                         <span className="text-[10px] uppercase font-black tracking-wider text-indigo-300 block">
@@ -562,7 +543,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5">
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                       <div>
                         <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">

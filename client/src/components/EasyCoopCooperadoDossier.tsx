@@ -385,7 +385,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
 
   if (coopFullLoading) {
     return (
-      <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
+      <div className="bg-white p-16 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
         <Loader2 className="h-8 w-8 text-sky-600 animate-spin" />
         <p className="text-xs font-semibold text-slate-600">Carregando dossiê EasyCoop...</p>
       </div>
@@ -400,7 +400,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
     <div className="space-y-6">
       {/* Cartão de Identificação Superior com Botão FICHA COOPERADO (PDF) */}
       {!hideTopHeader && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 rounded-2xl text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center space-x-4">
               <div className="h-16 w-16 rounded-2xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300 font-black text-2xl shadow-inner">
@@ -563,7 +563,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {activeCoopTab === 'cadastral' && (
         <div className="space-y-6 animate-in fade-in">
           {coopFullData.contrato_atual && (
-            <div className="bg-gradient-to-r from-sky-50 via-indigo-50/50 to-white p-6 rounded-3xl border border-sky-200 shadow-sm">
+            <div className="bg-gradient-to-r from-sky-50 via-indigo-50/50 to-white p-6 rounded-2xl border border-sky-200 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-3.5">
                   <div className="p-3 rounded-2xl bg-sky-600 text-white shadow-md">
@@ -615,7 +615,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Award className="h-4 w-4 text-amber-600" />
                 <span className="uppercase">VINCULO COOPERATIVO & CAPITAL SOCIAL</span>
@@ -663,7 +663,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <UserCheck className="h-4 w-4 text-sky-600" />
                 <span className="uppercase">IDENTIFICACAO CIVIL & PESSOAL</span>
@@ -741,7 +741,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Landmark className="h-4 w-4 text-emerald-600" />
                 <span className="uppercase">DADOS BANCARIOS PARA REPASSE</span>
@@ -782,7 +782,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-slate-800 font-extrabold text-sm border-b border-slate-100 pb-3">
                 <Phone className="h-4 w-4 text-sky-600" />
                 <span className="uppercase">CONTATOS & ENDERECO</span>
@@ -829,7 +829,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {/* ABA 2: FINANCEIRO / REPASSES */}
       {activeCoopTab === 'financeiro' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             {(() => {
               const availableContracts = (financialData?.contratos && financialData.contratos.length > 0)
                 ? financialData.contratos
@@ -883,7 +883,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             })()}
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-emerald-600" />
               <select
@@ -930,7 +930,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
           </div>
 
           {showProductivityChart && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in slide-in-from-top-3 duration-200">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6 animate-in slide-in-from-top-3 duration-200">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -1060,7 +1060,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             </div>
           )}
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-3">
                 <button
@@ -1251,7 +1251,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {/* ABA 3: FOLHA DE PAGAMENTO */}
       {activeCoopTab === 'folha' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <Receipt className="h-4 w-4 text-indigo-600" />
               <select
@@ -1306,12 +1306,12 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
           </div>
 
           {folhaLoading ? (
-            <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
+            <div className="bg-white p-16 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 shadow-sm">
               <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
               <p className="text-xs font-semibold text-slate-600">Carregando folha de pagamento...</p>
             </div>
           ) : !folhaData?.folha ? (
-            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center text-slate-400 text-xs shadow-sm">
+            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs shadow-sm">
               Nenhum demonstrativo de folha encontrado para a competência selecionada.
             </div>
           ) : (
@@ -1324,7 +1324,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {activeCoopTab === 'esocial' && (
         <div className="space-y-6 animate-in fade-in">
           {/* BANNER OFICIAL: CATEGORIA E-SOCIAL DO COOPERADO */}
-          <div className="bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-indigo-50/90 p-5 rounded-3xl border border-blue-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-indigo-50/90 p-5 rounded-2xl border border-blue-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5">
               <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex flex-col items-center justify-center font-black shadow-md shadow-blue-600/20 shrink-0">
                 <span className="text-[10px] leading-none uppercase tracking-wider text-blue-200 font-bold">CÓD</span>
@@ -1357,7 +1357,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
 
           {esocialData?.metricas && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Transmitido</span>
                 <span className="text-2xl font-black text-slate-900 mt-1 block">
                   {esocialData.metricas.totalTransmissoes}
@@ -1365,7 +1365,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                 <span className="text-[11px] text-slate-500">Eventos enviados</span>
               </div>
 
-              <div className="bg-emerald-50 p-5 rounded-3xl border border-emerald-200 shadow-sm">
+              <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm">
                 <span className="text-[10px] uppercase font-bold text-emerald-800 block">Aceitos com Recibo</span>
                 <span className="text-2xl font-black text-emerald-700 mt-1 block">
                   {esocialData.metricas.totalAceitos}
@@ -1373,7 +1373,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                 <span className="text-[11px] text-emerald-600">Validados no governo</span>
               </div>
 
-              <div className="bg-rose-50 p-5 rounded-3xl border border-rose-200 shadow-sm">
+              <div className="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm">
                 <span className="text-[10px] uppercase font-bold text-rose-800 block">Rejeições / Erros</span>
                 <span className="text-2xl font-black text-rose-700 mt-1 block">
                   {esocialData.metricas.totalErros}
@@ -1381,7 +1381,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                 <span className="text-[11px] text-rose-600">Requerem correção</span>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-3xl border border-blue-200 shadow-sm">
+              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 shadow-sm">
                 <span className="text-[10px] uppercase font-bold text-blue-800 block">Último Protocolo</span>
                 <span className="text-xs font-mono font-extrabold text-blue-900 mt-1 block truncate">
                   {esocialData.metricas.ultimoProtocolo}
@@ -1391,7 +1391,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             </div>
           )}
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-blue-600" />
               <select
@@ -1450,7 +1450,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-blue-50/80 via-emerald-50/80 to-slate-50 p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+          <div className="bg-gradient-to-r from-blue-50/80 via-emerald-50/80 to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center space-x-2 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
               <Info className="h-4 w-4 text-blue-600" />
               <span>Guia Oficial das Cores, Protocolos e Recibos do e-Social</span>
@@ -1488,7 +1488,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <button
@@ -1654,7 +1654,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
 
       {/* ABA 5: ALOCAÇÕES */}
       {activeCoopTab === 'alocacoes' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4 animate-in fade-in">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 animate-in fade-in">
           <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
             Histórico de Alocações em Tomadores de Serviço e Contratos
           </h3>
@@ -1702,7 +1702,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
 
       {/* ABA 6: DEPENDENTES */}
       {activeCoopTab === 'dependentes' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4 animate-in fade-in">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 animate-in fade-in">
           <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
             Dependentes Cadastrados (Dedução de IRRF e Benefícios)
           </h3>
@@ -1741,7 +1741,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
       {activeCoopTab === 'documentos' && (
         <div className="space-y-6 animate-in fade-in">
           {/* SEÇÃO 1: TERMOS OFICIAIS DO EASYCOOP (ADESÃO E DESLIGAMENTO) */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <FileCheck2 className="h-5 w-5 text-sky-600" />
@@ -1797,7 +1797,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
                     <a
                       href={coopFullData.termos_easy.adesao.download_url}
                       download={coopFullData.termos_easy.adesao.file_name}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white text-xs font-black uppercase text-center flex items-center justify-center gap-1.5 shadow-sm transition-all"
                     >
                       <FileDown className="h-4 w-4" />
                       <span>BAIXAR PDF</span>
@@ -1892,7 +1892,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
           </div>
 
           {/* SEÇÃO 2: TERMOS DIGITALIZADOS (ASSINACOOP) */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
               TERMOS E PROPOSTAS ASSINADAS DIGITALMENTE (ASSINACOOP)
             </h3>

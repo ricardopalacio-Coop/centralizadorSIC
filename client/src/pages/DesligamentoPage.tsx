@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CabecalhoPagina } from "../components/CabecalhoPagina";
 import {
   UserMinus,
   Search,
@@ -108,46 +109,28 @@ export const DesligamentoPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-2 sm:px-4 md:px-6 py-6 space-y-8 animate-in fade-in duration-300">
-      {/* BANNER PRINCIPAL DO MENU ADESÃO / DESLIGAMENTO */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-sky-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl border border-slate-700/50 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <div className="p-4 rounded-2xl bg-sky-600/30 border border-sky-500/30 text-sky-300 flex items-center space-x-1">
-              <UserPlus className="h-7 w-7 text-sky-400" />
-              <UserMinus className="h-7 w-7 text-rose-400" />
-            </div>
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-sky-400 block">
-                Módulo de Gestão de Vínculos Cooperativos
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
-                <span className="text-sky-400 font-black">Adesão</span>
-                <span className="text-slate-400 font-normal">/</span>
-                <span className="text-rose-500 font-black">Desligamento</span>
-                <span className="text-slate-200 font-bold text-xl">& Status de Propostas</span>
-              </h1>
-            </div>
-          </div>
+    <div className="w-full max-w-[1700px] mx-auto space-y-6 animate-in fade-in duration-300">
+      <CabecalhoPagina
+        icone={UserMinus}
+        titulo="Adesão e desligamento"
+        descricao="Pedidos de desligamento e propostas de adesão, com PDF e acompanhamento da assinatura digital."
+        acoes={
+          <span className="flex items-center gap-2 h-11 px-4 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600">
+            <ShieldCheck className="h-4 w-4 text-[#3ab54a]" />
+            Integração ativa via API Key M2M
+          </span>
+        }
+      />
 
-          <div className="flex items-center space-x-2 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-sky-200 self-start md:self-center">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span>Integração Ativa via API Key M2M</span>
-          </div>
-        </div>
-
-        <p className="text-xs sm:text-sm text-slate-300 max-w-3xl font-medium">
-          Consulte em tempo real os <strong>pedidos de desligamento</strong> e as <strong>propostas de adesão/admissão</strong>, gerando PDFs e acompanhando a assinatura digital do cooperado.
-        </p>
-
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         {/* CAMPO DE PESQUISA POR CPF */}
-        <div className="pt-2">
+        <div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSearch();
             }}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
           >
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -156,14 +139,14 @@ export const DesligamentoPage: React.FC = () => {
                 value={cpf}
                 onChange={handleCpfChange}
                 placeholder="Digite o CPF do cooperado (ex: 195.848.572-15)"
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-white text-slate-900 placeholder-slate-400 font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-inner"
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 font-mono text-sm focus:outline-none focus:bg-white focus:border-[#005487] focus:ring-2 focus:ring-[#005487]/20 transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-md disabled:opacity-50"
+              className="px-6 py-3 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -175,26 +158,26 @@ export const DesligamentoPage: React.FC = () => {
           </form>
 
           {/* BOTÕES DE SUGESTÃO DE TESTE RÁPIDO */}
-          <div className="flex flex-wrap items-center gap-2 pt-3 text-xs text-slate-300">
-            <span className="font-bold text-slate-400">Atalhos de Consulta:</span>
+          <div className="flex flex-wrap items-center gap-2 pt-3 text-xs text-slate-500">
+            <span className="font-semibold text-slate-500">Atalhos de consulta:</span>
             <button
               type="button"
               onClick={() => handleQuickSearch("19584857215")}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[11px] transition-all border border-white/10"
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] transition-all border border-slate-200"
             >
               195.848.572-15 (Francis)
             </button>
             <button
               type="button"
               onClick={() => handleQuickSearch("05917984417")}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[11px] transition-all border border-white/10"
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] transition-all border border-slate-200"
             >
               059.179.844-17 (Thiago)
             </button>
             <button
               type="button"
               onClick={() => handleQuickSearch("25930187800")}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[11px] transition-all border border-white/10"
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] transition-all border border-slate-200"
             >
               259.301.878-00 (Ricardo)
             </button>
@@ -246,7 +229,7 @@ export const DesligamentoPage: React.FC = () => {
           </div>
 
           {/* 1. SEÇÃO DE STATUS DO PEDIDO DE DESLIGAMENTO */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-2">
                 <UserMinus className="h-4 w-4 text-rose-600" />
@@ -296,7 +279,7 @@ export const DesligamentoPage: React.FC = () => {
           </div>
 
           {/* 2. SEÇÃO DA PROPOSTA DE ADESÃO / ADMISSÃO */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-2">
                 <FileText className="h-4 w-4 text-sky-600" />
@@ -306,7 +289,7 @@ export const DesligamentoPage: React.FC = () => {
               {result.proposal.found && (
                 <button
                   onClick={() => window.open(`/api/desligamento/${result.cpf}/proposta-pdf`, "_blank")}
-                  className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Gerar PDF da Proposta de Adesão</span>
@@ -321,7 +304,7 @@ export const DesligamentoPage: React.FC = () => {
             ) : (
               <div className="space-y-6">
                 {/* HERO CARD DA PROPOSTA DE ADESÃO */}
-                <div className="p-6 rounded-3xl bg-slate-900 text-white shadow-md space-y-4">
+                <div className="p-6 rounded-2xl bg-slate-900 text-white shadow-md space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                     <div className="flex items-center space-x-3">
                       <div className="p-3 rounded-2xl bg-sky-600/30 text-sky-300 border border-sky-500/30">
@@ -440,7 +423,7 @@ export const DesligamentoPage: React.FC = () => {
                           href={result.proposal.data.assinatura.link}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                          className="px-4 py-2.5 rounded-xl bg-[#005487] hover:bg-[#0c2856] text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
                         >
                           <span>Abrir Documento no PlugSign</span>
                           <ExternalLink className="h-3.5 w-3.5" />

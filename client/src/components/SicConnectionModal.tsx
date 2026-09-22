@@ -205,7 +205,7 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
                 type="button"
                 onClick={handleRefresh}
                 disabled={refreshing || loading || !status?.active}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#005487] hover:bg-[#0c2856] text-white shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-40"
                 title="Renova o token JWT na API oficial do SIC"
               >
                 {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
@@ -268,7 +268,7 @@ export const SicConnectionModal: React.FC<SicConnectionModalProps> = ({
               <button
                 type="submit"
                 disabled={saving || !tokenInput.trim()}
-                className="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-xl shadow-md transition-all flex items-center space-x-2"
+                className="px-5 py-2 text-xs font-semibold text-white bg-[#005487] hover:bg-[#0c2856] disabled:opacity-50 rounded-xl shadow-md transition-all flex items-center space-x-2"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 <span>Validar e Salvar Conexão</span>
