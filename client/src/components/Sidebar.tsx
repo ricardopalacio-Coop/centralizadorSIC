@@ -4,6 +4,7 @@ import { cn } from "../lib/utils";
 import { MarcaProduto } from "./MarcaProduto";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { SicConnectionModal } from "./SicConnectionModal";
+import { LgpdModal } from "./LgpdModal";
 import {
   UserCheck,
   FolderArchive,
@@ -21,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
 export type NavTabType =
@@ -43,7 +45,7 @@ interface ItemNav {
   nome: string;
   aba?: NavTabType;
   /** Ação que não navega: abre um diálogo. */
-  acao?: "senha" | "conexao-sic";
+  acao?: "senha" | "conexao-sic" | "lgpd";
   icone: React.ComponentType<{ className?: string }>;
   papeis: Papel[];
   submenu?: ItemNav[];
@@ -87,6 +89,7 @@ const navegacao: ItemNav[] = [
       { nome: "Usuários", aba: "users", icone: Users, papeis: SO_SUPERADMIN },
       { nome: "Conexão SIC", acao: "conexao-sic", icone: Plug, papeis: SO_SUPERADMIN },
       { nome: "Trocar minha senha", acao: "senha", icone: KeyRound, papeis: SO_SUPERADMIN },
+      { nome: "LGPD", acao: "lgpd", icone: ShieldCheck, papeis: SO_SUPERADMIN },
     ],
   },
 ];
@@ -115,6 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const [abertos, setAbertos] = useState<string[]>([]);
   const [senhaAberta, setSenhaAberta] = useState(false);
   const [sicAberta, setSicAberta] = useState(false);
+  const [lgpdAberta, setLgpdAberta] = useState(false);
   const [sicConectado, setSicConectado] = useState(true);
 
   const papel = (user?.role ?? "USER") as Papel;
@@ -151,6 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const executar = (item: ItemNav) => {
     if (item.acao === "senha") return setSenhaAberta(true);
     if (item.acao === "conexao-sic") return setSicAberta(true);
+    if (item.acao === "lgpd") return setLgpdAberta(true);
     if (item.aba) setActiveTab(item.aba);
   };
 
@@ -387,7 +392,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         </div>
       </aside>
 
-      {senhaAberta && <ChangePasswordModal onClose={() => setSenhaAberta(false)} />}
+      <ChangePasswordModal isOpen={senhaAberta} onClose={() => setSenhaAberta(false)} />
+
+      <LgpdModal isOpen={lgpdAberta} onClose={() => setLgpdAberta(false)} />
 
       <SicConnectionModal isOpen={sicAberta} onClose={() => setSicAberta(false)} onSessionUpdated={verificarSic} />
     </>

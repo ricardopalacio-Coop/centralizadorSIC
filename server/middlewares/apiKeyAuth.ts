@@ -29,10 +29,18 @@ export async function authenticateApiKey(
       token = String(req.headers["x-api-key"]).trim();
     }
 
+    // 3. Suporte a Query Parameter (?api_key= ou ?token=) para download e visualização de PDFs
+    if (!token && req.query.api_key) {
+      token = String(req.query.api_key).trim();
+    }
+    if (!token && req.query.token) {
+      token = String(req.query.token).trim();
+    }
+
     if (!token) {
       return res.status(401).json({
         error: "Token de API não fornecido.",
-        message: "Autenticação necessária. Envie seu token via Header 'Authorization: Bearer <TOKEN>' ou 'X-API-Key: <TOKEN>'. (Por segurança, tokens via URL não são aceitos).",
+        message: "Autenticação necessária. Envie seu token via Header 'Authorization: Bearer <TOKEN>', 'X-API-Key: <TOKEN>' ou parâmetro '?api_key=<TOKEN>'.",
       });
     }
 

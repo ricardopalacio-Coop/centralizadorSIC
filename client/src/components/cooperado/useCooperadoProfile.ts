@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { PayrollItem, AppData } from "./types";
+import { exibirCpf } from "../../lib/lgpd";
 
 export function useCooperadoProfile(cooperadoCpf: string) {
   const [activeTab, setActiveTab] = useState<"pessoal" | "contrato" | "bancario" | "folhas" | "app">("pessoal");
@@ -112,7 +113,7 @@ export function useCooperadoProfile(cooperadoCpf: string) {
   const formatCpf = (val?: string) => {
     if (!val) return "N/I";
     const digits = val.replace(/\D/g, "");
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    return exibirCpf(digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"));
   };
 
   const formatDate = (dateStr?: string) => {

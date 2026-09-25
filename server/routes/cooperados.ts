@@ -12,6 +12,7 @@ import {
 } from "../services/sicApi";
 import {
   updateOfficialSicCooperadoContacts,
+  updateOfficialSicCooperadoData,
   getOfficialSicPaymentReceiptPdf,
   getAuthenticatedSicSession,
 } from "../services/sicBrowserAutomation";
@@ -20,6 +21,7 @@ import { generateReceiptPdf, generateDemonstrativePdf } from "../services/pdfSer
 
 import { getFinancialSummary } from "../services/financialSummaryService";
 import { checkCoop01Status, runCoop01Sync } from "../services/coop01SyncService";
+import { syncAllSicCooperados, getSicSyncState } from "../services/sicCooperadosSyncService";
 
 const router = Router();
 const upload = multer({ limits: { fileSize: 20 * 1024 * 1024 } });
@@ -240,15 +242,123 @@ async function upsertCooperadoFromSic(sicUser: any, payrolls: any[], sicDetails?
   return rows[0] || null;
 }
 
+// Regra do "Contrato Principal" exibido na lista:
+// 1º Gestor Coopedu; 2º Prefeitura (somente o nome da cidade); 3º o próximo contrato encontrado.
+const PREFEITURA_PREFIX = /^\s*(PREFEITURA|PRFEITURA|PREFF?)\.?\s+(MUNICIPAL\s+|MUN\.?\s+)?((DE|DO|DA|DOS|DAS)\s+)?/i;
+
+// Corrige textos gravados com dupla codificação (ex.: "SÃ\x83O" -> "SÃO", "NÂ°" -> "N°")
+function fixMojibake(s: string): string {
+  if (!/[ÃÂ][\u0080-¿]/.test(s)) return s;
+  const fixed = Buffer.from(s, "latin1").toString("utf8");
+  return fixed.includes("�") ? s : fixed;
+}
+
+function cidadeDaPrefeitura(nome: string): string {
+  const cidade = nome
+    .replace(PREFEITURA_PREFIX, "")
+    .replace(/\s+N[º°o]?\.?\s*\d.*$/i, "") // "EQUADOR N° 1AD03", "BODO N° 005/2021"
+    .replace(/\s*\(.*\)\s*$/, "") // "JAPI (CONTRATO VENCIDO)"
+    .replace(/\s*-?\s*\d+\/\d{2,4}$/, "") // "MONTE ALEGRE- 57/2025"
+    .replace(/\s+(\d+|I{1,3}|IV)$/i, "") // "PENDENCIAS 2023", "JANDUIS II", "PASSAGEM 1"
+    .trim();
+  return cidade || nome;
+}
+
+function resolveContratoPrincipal(candidatos: string[]): string | null {
+  const nomes = candidatos.map((c) => fixMojibake(String(c || "").trim())).filter(Boolean);
+  const gestor = nomes.find((n) => /GESTOR/i.test(n));
+  if (gestor) return gestor;
+  const prefeitura = nomes.find((n) => PREFEITURA_PREFIX.test(n));
+  if (prefeitura) return cidadeDaPrefeitura(prefeitura);
+  // Contratos administrativos (descanso, sobras, devolução de quotas...) só se não houver outro
+  const administrativo = /DESCANSO|SOBRA|DEVOLU|IMPORTACAO|ATO COOPERADO/i;
+  return nomes.find((n) => !administrativo.test(n)) || nomes[0] || null;
+}
+
+const SEM_CONTRATO = "__sem__";
+
+type EasyCoopResumo = {
+  contratos: string[];
+  nome: string;
+  matricula: string | null;
+  status: string;
+  admissao: string | null;
+};
+
+let contratosCache: { at: number; byDoc: Map<string, EasyCoopResumo> } | null = null;
+
+async function getEasyCoopPorDocumento(): Promise<Map<string, EasyCoopResumo>> {
+  if (contratosCache && Date.now() - contratosCache.at < 5 * 60 * 1000) return contratosCache.byDoc;
+  const byDoc = new Map<string, EasyCoopResumo>();
+  try {
+    const [rows] = await pool.query<any[]>(`
+      SELECT document, nome, matricula, status_alocacao, data_inicio, contrato_descricao, tomador_nome
+      FROM easycoop_alocacoes
+      WHERE document IS NOT NULL AND document <> ''
+      ORDER BY
+        (CASE WHEN status_alocacao IN ('Ativo', 'S', 'A') THEN 0 ELSE 1 END) ASC,
+        (CASE
+          WHEN UPPER(COALESCE(contrato_descricao, tomador_nome, '')) LIKE '%DESCANSO%' THEN 3
+          WHEN UPPER(COALESCE(contrato_descricao, tomador_nome, '')) LIKE '%SOBRA%' THEN 2
+          ELSE 1
+        END) ASC,
+        data_inicio DESC,
+        id DESC`);
+    for (const row of rows) {
+      const doc = cleanCpf(String(row.document)).padStart(11, "0");
+      let resumo = byDoc.get(doc);
+      if (!resumo) {
+        // Primeira linha = alocação mais relevante (ativa e mais recente)
+        resumo = {
+          contratos: [],
+          nome: String(row.nome || "").trim(),
+          matricula: row.matricula || null,
+          status: ["Ativo", "S", "A"].includes(row.status_alocacao) ? "Ativo" : "Inativo",
+          admissao: null,
+        };
+        byDoc.set(doc, resumo);
+      }
+      for (const nome of [row.contrato_descricao, row.tomador_nome]) {
+        if (nome && !resumo.contratos.includes(nome)) resumo.contratos.push(nome);
+      }
+      if (row.data_inicio) {
+        const ini = new Date(row.data_inicio).toISOString().slice(0, 10);
+        if (!resumo.admissao || ini < resumo.admissao) resumo.admissao = ini;
+      }
+    }
+  } catch (e: any) {
+    console.warn("[Cooperados] Falha ao carregar alocações do EasyCoop:", e.message);
+  }
+  contratosCache = { at: Date.now(), byDoc };
+  return byDoc;
+}
+
 /**
  * GET /api/cooperados/listar
  * Retorna cooperados trazendo informações reais do SIC
+ * Filtros: search, nome, cpf, matricula, contrato, admissao, status
+ * Ordenação: sortBy (name|document|registration_number|contract_name|admission_date|status), sortDir (asc|desc)
  */
+/**
+ * POST /api/cooperados/sincronizar-sic  → inicia em segundo plano a carga completa da API do SIC
+ * GET  /api/cooperados/sincronizar-sic  → andamento da sincronização
+ */
+router.post("/sincronizar-sic", (_req: AuthenticatedRequest, res: Response) => {
+  syncAllSicCooperados()
+    .then(() => { contratosCache = null; })
+    .catch(() => {});
+  return res.status(202).json(getSicSyncState());
+});
+
+router.get("/sincronizar-sic", (_req: AuthenticatedRequest, res: Response) => {
+  return res.json(getSicSyncState());
+});
+
 router.get("/listar", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const search = String(req.query.search || "").trim();
     const pageNumber = Math.max(1, parseInt(String(req.query.pageNumber || "1"), 10));
-    const pageSize = Math.min(12000, Math.max(1, parseInt(String(req.query.pageSize || "25"), 10)));
+    const pageSize = Math.min(20000, Math.max(1, parseInt(String(req.query.pageSize || "25"), 10)));
     const offset = (pageNumber - 1) * pageSize;
 
     if (search) {
@@ -265,32 +375,141 @@ router.get("/listar", async (req: AuthenticatedRequest, res: Response) => {
       } catch (e) {}
     }
 
-    let countQuery = "SELECT COUNT(*) as total FROM cooperados";
-    let listQuery = "SELECT * FROM cooperados";
+    let listQuery =
+      "SELECT id, document, sic_id, registration_number, name, contract_name, sic_contracts, admission_date, status, email, whatsapp_number, city, state FROM cooperados";
     const queryParams: any[] = [];
 
     if (search) {
       const cleanedCpf = cleanCpf(search);
       const searchTerm = `%${search}%`;
-      countQuery += " WHERE name LIKE ? OR document LIKE ? OR registration_number LIKE ?";
       listQuery += " WHERE name LIKE ? OR document LIKE ? OR registration_number LIKE ?";
       queryParams.push(searchTerm, `%${cleanedCpf || search}%`, searchTerm);
     }
 
-    listQuery += " ORDER BY name ASC LIMIT ? OFFSET ?";
+    const [baseRows] = await pool.query<any[]>(listQuery, queryParams);
+    const easyPorDoc = await getEasyCoopPorDocumento();
 
-    const [countRows] = await pool.query<any[]>(countQuery, queryParams);
-    const totalCount = countRows[0]?.total || 0;
+    const toIsoDate = (d: any) => {
+      if (!d) return "";
+      const dt = d instanceof Date ? d : new Date(d);
+      return isNaN(dt.getTime()) ? String(d) : dt.toISOString().slice(0, 10);
+    };
+    const norm = (v: any) =>
+      String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
-    const [rows] = await pool.query<any[]>(listQuery, [...queryParams, pageSize, offset]);
+    // Base de origem: SIC (sic_id preenchido pela sincronização da API) e/ou EASY (alocações do EasyCoop)
+    const vistos = new Set<string>();
+    let rows: any[] = baseRows.map((r) => {
+      const doc = cleanCpf(String(r.document || "")).padStart(11, "0");
+      vistos.add(doc);
+      const easy = easyPorDoc.get(doc);
+      const { sic_id, sic_contracts, ...rest } = r;
+      let contratosSic: string[] = [];
+      try {
+        contratosSic = sic_contracts ? JSON.parse(sic_contracts) : [];
+      } catch {}
+      return {
+        ...rest,
+        name: fixMojibake(String(r.name || "").trim()),
+        contract_name: resolveContratoPrincipal([r.contract_name, ...contratosSic, ...(easy?.contratos || [])]),
+        status: r.status || "Ativo",
+        base: sic_id && easy ? "SIC/EASY" : sic_id ? "SIC" : easy ? "EASY" : "—",
+      };
+    });
+
+    // Cooperados que existem somente no banco do EasyCoop
+    const searchNorm = norm(search);
+    const searchCpf = cleanCpf(search);
+    for (const [doc, easy] of easyPorDoc) {
+      if (vistos.has(doc)) continue;
+      if (
+        search &&
+        !norm(easy.nome).includes(searchNorm) &&
+        !(searchCpf && doc.includes(searchCpf)) &&
+        !norm(easy.matricula).includes(searchNorm)
+      ) continue;
+      rows.push({
+        id: null,
+        document: doc,
+        registration_number: easy.matricula,
+        name: fixMojibake(easy.nome),
+        contract_name: resolveContratoPrincipal(easy.contratos),
+        admission_date: easy.admissao,
+        status: easy.status,
+        base: "EASY",
+      });
+    }
+
+    // Filtros por coluna
+    const fNome = norm(req.query.nome);
+    const fCpf = cleanCpf(String(req.query.cpf || ""));
+    const fMatricula = norm(req.query.matricula);
+    // Contrato: múltipla escolha (?contrato=A&contrato=B); "__sem__" = sem contrato
+    const fContratos = new Set(
+      ([] as any[]).concat(req.query.contrato || []).map((v) => String(v).trim()).filter(Boolean)
+    );
+    const fAdmissao = String(req.query.admissao || "").trim();
+    const fStatus = norm(req.query.status);
+    const fBase = String(req.query.base || "").trim();
+
+    // Opções da combo de contratos (sobre a base toda, antes dos filtros de coluna)
+    const contagemContratos = new Map<string, number>();
+    for (const r of rows) {
+      const chave = r.contract_name || SEM_CONTRATO;
+      contagemContratos.set(chave, (contagemContratos.get(chave) || 0) + 1);
+    }
+    const contratoOptions = [...contagemContratos]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) =>
+        a.value === SEM_CONTRATO ? 1 : b.value === SEM_CONTRATO ? -1 : a.value.localeCompare(b.value, "pt-BR", { sensitivity: "base" })
+      );
+
+    rows = rows.filter((r) => {
+      if (fNome && !norm(r.name).includes(fNome)) return false;
+      if (fCpf && !String(r.document || "").includes(fCpf)) return false;
+      if (fMatricula && !norm(r.registration_number).includes(fMatricula)) return false;
+      if (fContratos.size && !fContratos.has(r.contract_name || SEM_CONTRATO)) return false;
+      if (fStatus && norm(r.status) !== fStatus) return false;
+      if (fBase && r.base !== fBase) return false;
+      if (fAdmissao) {
+        const iso = toIsoDate(r.admission_date);
+        const br = iso ? iso.split("-").reverse().join("/") : "";
+        if (!br.includes(fAdmissao) && !iso.includes(fAdmissao)) return false;
+      }
+      return true;
+    });
+
+    // Ordenação
+    const sortable = ["name", "document", "registration_number", "contract_name", "admission_date", "status", "base"];
+    const sortBy = sortable.includes(String(req.query.sortBy)) ? String(req.query.sortBy) : "name";
+    const dir = String(req.query.sortDir).toLowerCase() === "desc" ? -1 : 1;
+    rows.sort((a, b) => {
+      let va: any = a[sortBy];
+      let vb: any = b[sortBy];
+      if (sortBy === "admission_date") {
+        va = toIsoDate(va);
+        vb = toIsoDate(vb);
+      } else if (sortBy === "registration_number") {
+        va = Number(va) || 0;
+        vb = Number(vb) || 0;
+        return (va - vb) * dir;
+      }
+      // Vazios sempre no final
+      if (!va && vb) return 1;
+      if (va && !vb) return -1;
+      return String(va || "").localeCompare(String(vb || ""), "pt-BR", { sensitivity: "base" }) * dir;
+    });
+
+    const totalCount = rows.length;
     const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
     return res.json({
-      cooperados: rows,
+      cooperados: rows.slice(offset, offset + pageSize),
       totalCount,
       pageNumber,
       pageSize,
       totalPages,
+      contratoOptions,
     });
   } catch (error: any) {
     console.error("[Cooperados Error] Erro ao listar cooperados:", error.message);
@@ -299,50 +518,113 @@ router.get("/listar", async (req: AuthenticatedRequest, res: Response) => {
 });
 
 /**
- * PUT /api/cooperados/:cpf/contatos
+ * PUT /api/cooperados/:cpf/contatos e PUT /api/cooperados/:cpf/sic
  */
-router.put("/:cpf/contatos", async (req: AuthenticatedRequest, res: Response) => {
+const handleUpdateSicData = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const paramCpf = String(req.params.cpf || "");
     const numericCpf = cleanCpf(paramCpf);
-    const { email, whatsapp_number, birth_date } = req.body;
+    const {
+      email,
+      whatsapp_number,
+      whatsapp,
+      cellPhone,
+      birth_date,
+      birthDate,
+      dataNascimento,
+      rg,
+      street,
+      rua,
+      number,
+      numero,
+      complement,
+      complemento,
+      neighborhood,
+      bairro,
+      city,
+      cidade,
+      state,
+      estado,
+      zip_code,
+      cep,
+    } = req.body || {};
 
     if (!numericCpf) {
       return res.status(400).json({ error: "CPF inválido." });
     }
 
-    const formattedBirthDate = formatDateForDb(birth_date);
+    const finalEmail = email !== undefined ? String(email).trim().toLowerCase() : undefined;
+    const finalWhatsapp = cleanCpf(whatsapp_number || whatsapp || cellPhone || "");
+    const finalBirthDate = birth_date || birthDate || dataNascimento || undefined;
+    const formattedBirthDate = formatDateForDb(finalBirthDate);
+    const finalRg = rg !== undefined ? String(rg).trim() : undefined;
+    const finalStreet = street || rua;
+    const finalNumber = number || numero;
+    const finalComplement = complement !== undefined ? complement : complemento;
+    const finalNeighborhood = neighborhood || bairro;
+    const finalCity = city || cidade;
+    const finalState = (state || estado) ? String(state || estado).trim().toUpperCase() : undefined;
+    const finalZipCode = zip_code ? cleanCpf(zip_code) : (cep ? cleanCpf(cep) : undefined);
 
     await pool.query(
       `UPDATE cooperados SET
-        email = ?,
-        whatsapp_number = ?,
+        email = COALESCE(?, email),
+        whatsapp_number = COALESCE(?, whatsapp_number),
         birth_date = COALESCE(?, birth_date),
+        street = COALESCE(?, street),
+        number = COALESCE(?, number),
+        complement = COALESCE(?, complement),
+        neighborhood = COALESCE(?, neighborhood),
+        city = COALESCE(?, city),
+        state = COALESCE(?, state),
+        zip_code = COALESCE(?, zip_code),
         updated_at = CURRENT_TIMESTAMP
        WHERE document = ?`,
-      [email || null, whatsapp_number || null, formattedBirthDate, numericCpf]
+      [
+        finalEmail || null,
+        finalWhatsapp || null,
+        formattedBirthDate || null,
+        finalStreet || null,
+        finalNumber || null,
+        finalComplement || null,
+        finalNeighborhood || null,
+        finalCity || null,
+        finalState || null,
+        finalZipCode || null,
+        numericCpf,
+      ]
     );
 
-    const syncedSuccess = await updateOfficialSicCooperadoContacts(
-      numericCpf,
-      email || "",
-      whatsapp_number || "",
-      birth_date || undefined
-    );
+    const syncResult = await updateOfficialSicCooperadoData(numericCpf, {
+      email: finalEmail,
+      whatsapp: finalWhatsapp,
+      birthDate: finalBirthDate,
+      rg: finalRg,
+      street: finalStreet,
+      number: finalNumber,
+      complement: finalComplement,
+      neighborhood: finalNeighborhood,
+      city: finalCity,
+      state: finalState,
+      zipCode: finalZipCode,
+    });
 
     const [rows] = await pool.query<any[]>("SELECT * FROM cooperados WHERE document = ?", [numericCpf]);
     return res.json({
-      message: syncedSuccess
-        ? "Dados cadastrais (E-mail, WhatsApp e Data de Nascimento) atualizados com sucesso no Centralizador SIC e sincronizados com o SIC oficial!"
-        : "Dados cadastrais atualizados no Centralizador SIC local. (Erro na sincronização oficial do SIC).",
+      message: syncResult.success
+        ? "Dados cadastrais atualizados com sucesso no Centralizador SIC e sincronizados com o SIC oficial!"
+        : `Dados cadastrais atualizados no Centralizador SIC local. (${syncResult.message})`,
       cooperado: rows[0] || null,
-      syncedOfficialSic: syncedSuccess,
+      syncedOfficialSic: syncResult.success,
+      sicDetails: syncResult.details || null,
     });
   } catch (error: any) {
     console.error("[Cooperados Error] Erro ao atualizar contatos/dados:", error.message);
     return res.status(500).json({ error: "Erro ao atualizar dados do cooperado." });
   }
-});
+};
+router.put("/:cpf/contatos", handleUpdateSicData);
+router.put("/:cpf/sic", handleUpdateSicData);
 
 /**
  * GET /api/cooperados/search?q=...

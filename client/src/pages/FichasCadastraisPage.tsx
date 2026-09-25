@@ -26,6 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { EditFichaModal } from "../components/EditFichaModal";
+import { exibirCpf } from "../lib/lgpd";
 
 export type FichaTipo = "Ficha Manual" | "EasyCoop" | "Coopedu Interno" | "Outro";
 
@@ -828,7 +829,7 @@ export const FichasCadastraisPage: React.FC = () => {
                       {item.cpf ? (
                         <div className="flex items-center space-x-1.5">
                           <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 whitespace-nowrap">
-                            {item.cpf}
+                            {exibirCpf(item.cpf)}
                           </span>
                           <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" title="CPF Identificado com Sucesso" />
                         </div>

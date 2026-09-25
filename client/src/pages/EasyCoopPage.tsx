@@ -18,6 +18,7 @@ import {
   FileText,
 } from "lucide-react";
 import { EasyCoopCooperadoDossier, toUpperNoAccents } from "../components/EasyCoopCooperadoDossier";
+import { exibirCpf } from "../lib/lgpd";
 
 interface EasyCoopPageProps {
   initialMode?: "cooperado" | "contrato";
@@ -252,7 +253,7 @@ export const EasyCoopPage: React.FC<EasyCoopPageProps> = ({ initialMode = "coope
     if (!val) return "-";
     const d = val.replace(/\D/g, "");
     if (d.length === 11) {
-      return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      return exibirCpf(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"));
     }
     return val;
   };

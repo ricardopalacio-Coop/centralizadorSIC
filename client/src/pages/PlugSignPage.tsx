@@ -16,6 +16,7 @@ import {
   Zap,
   Search,
 } from "lucide-react";
+import { exibirCpf } from "../lib/lgpd";
 
 interface RowResult {
   rowNumber: number;
@@ -516,7 +517,7 @@ export const PlugSignPage: React.FC = () => {
                             {res.name || "-"}
                           </td>
                           <td className="py-3 px-3 font-mono text-slate-700 whitespace-nowrap">
-                            {res.cpf || "-"}
+                            {res.cpf ? exibirCpf(res.cpf) : "-"}
                           </td>
                           <td className="py-3 px-4 text-slate-600">
                             <span className="truncate block max-w-[240px]" title={res.contract}>

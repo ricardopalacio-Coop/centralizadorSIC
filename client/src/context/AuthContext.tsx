@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { definirMascaraLgpd } from "../lib/lgpd";
 
 export interface User {
   id: number;
@@ -17,6 +18,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** SuperAdmin sempre vê os dados completos; os demais seguem a chave LGPD. */
+const aplicarLgpd = (user: User | null, lgpdAtivo?: boolean) =>
+  definirMascaraLgpd(!!lgpdAtivo && !!user && user.role !== "SUPER_ADMIN");
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -26,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
+        aplicarLgpd(data.user, data.lgpdAtivo);
         setUser(data.user);
       } else {
         setUser(null);
@@ -55,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.error || "Falha na autenticação");
       }
 
+      aplicarLgpd(data.user, data.lgpdAtivo);
       setUser(data.user);
     } finally {
       // Limpeza por segurança extra na memória da chamada

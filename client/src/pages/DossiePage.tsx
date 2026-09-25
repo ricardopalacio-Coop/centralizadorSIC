@@ -29,6 +29,7 @@ import {
   Download,
 } from "lucide-react";
 import { PdfViewerModal } from "../components/PdfViewerModal";
+import { exibirCpf } from "../lib/lgpd";
 
 interface CooperadoSearchResult {
   id: number;
@@ -88,7 +89,7 @@ function formatCpf(val?: string | null) {
   if (!val) return "-";
   const digits = val.replace(/\D/g, "");
   if (digits.length !== 11) return val;
-  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  return exibirCpf(digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"));
 }
 
 /**

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../db";
 import { authenticateToken, AuthenticatedRequest } from "../middlewares/auth";
+import { isLgpdAtivo } from "../services/lgpdService";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "centralizador_sic_jwt_secret_key_coopedu_2026_super_secure";
@@ -59,6 +60,7 @@ router.post("/login", async (req: Request, res: Response) => {
     return res.json({
       message: "Login realizado com sucesso",
       user: tokenPayload,
+      lgpdAtivo: await isLgpdAtivo(),
       token, // Também devolve token caso o cliente prefira autorizar via Header
     });
   } catch (error: any) {
@@ -71,7 +73,7 @@ router.post("/login", async (req: Request, res: Response) => {
  * GET /api/auth/me
  * Retorna os dados da sessão do usuário autenticado (ou null se não logado, evitando erro 401 no F12)
  */
-router.get("/me", (req: Request, res: Response) => {
+router.get("/me", async (req: Request, res: Response) => {
   const tokenFromCookie = req.cookies?.auth_token;
   const authHeader = req.headers.authorization;
   const tokenFromHeader = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
@@ -84,7 +86,7 @@ router.get("/me", (req: Request, res: Response) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return res.json({ user: decoded });
+    return res.json({ user: decoded, lgpdAtivo: await isLgpdAtivo() });
   } catch (error) {
     return res.json({ user: null });
   }

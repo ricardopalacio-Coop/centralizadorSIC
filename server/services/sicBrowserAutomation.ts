@@ -558,15 +558,36 @@ export async function getAuthenticatedSicSession(): Promise<{ jwtToken: string; 
  * Atualiza o E-mail e WhatsApp do cooperado diretamente no banco oficial do SIC
  * GARANTIA: Atualiza DADOS REAIS e UNICAMENTE o cooperado selecionado (busca dinamicamente pelo CPF)
  */
-export async function updateOfficialSicCooperadoContacts(
+export interface SicUpdateData {
+  email?: string;
+  whatsapp?: string;
+  birthDate?: string;
+  rg?: string;
+  rgIssuer?: string;
+  rgState?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
+/**
+ * Atualiza dados cadastrais do cooperado selecionado na API oficial do SIC (ui.coopedu.app.br)
+ * com sanitização estrita, preservação da ficha via GET -> PUT e higienização de relacionamentos
+ */
+export async function updateOfficialSicCooperadoData(
   cpf: string,
-  newEmail: string,
-  newWhatsapp: string,
-  newBirthDate?: string
-) {
+  data: SicUpdateData
+): Promise<{ success: boolean; message: string; details?: any }> {
   const numericCpf = cleanCpf(cpf);
-  const numericPhone = cleanCpf(newWhatsapp);
-  if (!numericCpf) return false;
+  if (!numericCpf) {
+    return { success: false, message: "CPF inválido." };
+  }
+
+  const numericPhone = data.whatsapp ? cleanCpf(data.whatsapp) : "";
 
   try {
     const { jwtToken, cookieHeader } = await getAuthenticatedSicSession();
@@ -588,8 +609,9 @@ export async function updateOfficialSicCooperadoContacts(
     const targetCooperado = items.find((i: any) => cleanCpf(i.document || i.cpf) === numericCpf) || items[0];
 
     if (!targetCooperado || !targetCooperado.id) {
-      console.error(`[SIC Official Sync Error] Cooperado com CPF ${numericCpf} não foi localizado no SIC. Atualização cancelada por segurança.`);
-      return false;
+      const msg = `Cooperado com CPF ${numericCpf} não foi localizado no SIC. Atualização cancelada por segurança.`;
+      console.error(`[SIC Official Sync Error] ${msg}`);
+      return { success: false, message: msg };
     }
 
     const targetCooperadoId = targetCooperado.id;
@@ -603,13 +625,14 @@ export async function updateOfficialSicCooperadoContacts(
     const existing = detailsRes.data?.body || detailsRes.data || {};
 
     // Formata o RG para string simples conforme exigido pela API do SIC
-    const rgString = typeof existing.documents?.rg === "object" ? (existing.documents.rg.number || "") : (existing.documents?.rg || "");
-    const rgIssuer = existing.documents?.rgIssuer || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgIssuer : "") || "SSP";
-    const rgState = existing.documents?.rgState || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgState : "") || "CE";
+    const existingRgStr = typeof existing.documents?.rg === "object" ? (existing.documents.rg.number || "") : (existing.documents?.rg || "");
+    const finalRg = data.rg !== undefined ? String(data.rg).trim() : existingRgStr;
+    const finalRgIssuer = data.rgIssuer || existing.documents?.rgIssuer || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgIssuer : "") || "SSP";
+    const finalRgState = data.rgState || existing.documents?.rgState || (typeof existing.documents?.rg === "object" ? existing.documents.rg.rgState : "") || "CE";
 
     let formattedBirthDate = existing.birthDate || existing.dataNascimento;
-    if (newBirthDate) {
-      const str = String(newBirthDate).trim();
+    if (data.birthDate) {
+      const str = String(data.birthDate).trim();
       if (str.includes("/")) {
         const parts = str.split("/");
         if (parts.length === 3) {
@@ -635,21 +658,45 @@ export async function updateOfficialSicCooperadoContacts(
       ...cleanData
     } = existing;
 
-    const payload = {
+    const payload: any = {
       ...cleanData,
       identification: numericCpf,
-      email: String(newEmail || existing.email || "").trim().toLowerCase(),
+      email: data.email !== undefined ? String(data.email).trim().toLowerCase() : (existing.email || ""),
       cellPhone: numericPhone || cleanCpf(existing.cellPhone || existing.celular || ""),
       telephone: existing.telephone || "",
       birthDate: formattedBirthDate,
       dataNascimento: formattedBirthDate,
       documents: {
         ...existing.documents,
-        rg: rgString || existing.documents?.rg?.number || null,
-        rgIssuer: rgIssuer,
-        rgState: rgState,
+        rg: finalRg || null,
+        rgIssuer: finalRgIssuer,
+        rgState: finalRgState,
       },
     };
+
+    // Atualiza endereço se fornecido
+    if (data.street || data.number || data.neighborhood || data.city || data.state || data.zipCode || data.complement !== undefined) {
+      payload.address = {
+        ...(existing.address || {}),
+        streetName: data.street || existing.address?.streetName || existing.address?.street || existing.endereco?.rua || "",
+        houseNumber: data.number || existing.address?.houseNumber || existing.endereco?.numero || "S/N",
+        complement: data.complement !== undefined ? data.complement : (existing.address?.complement || existing.endereco?.complemento || ""),
+        neighborhood: data.neighborhood || existing.address?.neighborhood || existing.endereco?.bairro || "",
+        cityName: data.city || existing.address?.cityName || existing.address?.city || existing.endereco?.cidade || "",
+        state: data.state || existing.address?.state || existing.endereco?.estado || "CE",
+        cep: data.zipCode ? cleanCpf(data.zipCode) : (existing.address?.cep || existing.endereco?.cep || ""),
+      };
+      payload.endereco = {
+        ...(existing.endereco || {}),
+        rua: data.street || existing.endereco?.rua || existing.address?.streetName || "",
+        numero: data.number || existing.endereco?.numero || existing.address?.houseNumber || "S/N",
+        complemento: data.complement !== undefined ? data.complement : (existing.endereco?.complemento || existing.address?.complement || ""),
+        bairro: data.neighborhood || existing.endereco?.bairro || existing.address?.neighborhood || "",
+        cidade: data.city || existing.endereco?.cidade || existing.address?.cityName || "",
+        estado: data.state || existing.endereco?.estado || existing.address?.state || "CE",
+        cep: data.zipCode ? cleanCpf(data.zipCode) : (existing.endereco?.cep || existing.address?.cep || ""),
+      };
+    }
 
     const updateHeaders = {
       ...headers,
@@ -657,12 +704,31 @@ export async function updateOfficialSicCooperadoContacts(
     };
 
     const updateRes = await axios.put(`https://ui.coopedu.app.br/api/cooperado/${targetCooperadoId}`, payload, { headers: updateHeaders });
-    console.log(`[SIC Official Sync] 🎉 SUCESSO TOTAL ao atualizar E-mail (${newEmail}), Celular (${numericPhone}) e Data Nascimento (${formattedBirthDate}) para o cooperado SELECIONADO (ID ${targetCooperadoId}):`, updateRes.data?.message || updateRes.status);
-    return true;
+    const successMsg = `Cadastro atualizado com sucesso no SIC oficial para o cooperado ID ${targetCooperadoId}!`;
+    console.log(`[SIC Official Sync] 🎉 ${successMsg}:`, updateRes.data?.message || updateRes.status);
+    return { success: true, message: successMsg, details: updateRes.data };
   } catch (err: any) {
+    const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
     console.error(`[SIC Official Sync Error] Erro ao atualizar no SIC oficial para CPF ${numericCpf}:`, err.response?.data || err.message);
-    return false;
+    return { success: false, message: `Erro ao sincronizar com o SIC oficial: ${errorMsg}` };
   }
+}
+
+/**
+ * Atualiza contatos do cooperado no SIC oficial (wrapper para retrocompatibilidade)
+ */
+export async function updateOfficialSicCooperadoContacts(
+  cpf: string,
+  newEmail: string,
+  newWhatsapp: string,
+  newBirthDate?: string
+): Promise<boolean> {
+  const result = await updateOfficialSicCooperadoData(cpf, {
+    email: newEmail,
+    whatsapp: newWhatsapp,
+    birthDate: newBirthDate,
+  });
+  return result.success;
 }
 
 /**

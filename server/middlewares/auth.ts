@@ -10,7 +10,7 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "centralizador_sic_jwt_secret_key_coopedu_2026_super_secure";
+export const JWT_SECRET = process.env.JWT_SECRET || "centralizador_sic_jwt_secret_key_coopedu_2026_super_secure";
 
 /**
  * Middleware para autenticação via JWT (lido de HttpOnly Cookie ou Bearer Header)

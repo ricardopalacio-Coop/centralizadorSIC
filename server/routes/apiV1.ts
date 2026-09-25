@@ -13,9 +13,47 @@ import { getFinancialSummary } from "../services/financialSummaryService";
 import {
   getOfficialSicPaymentReceiptPdf,
   getAuthenticatedSicSession,
+  updateOfficialSicCooperadoData,
+  updateOfficialSicCooperadoContacts,
 } from "../services/sicBrowserAutomation";
 import { getCooperadoAppData } from "../services/appDbService";
-import { generateReceiptPdf } from "../services/pdfService";
+import {
+  generateReceiptPdf,
+  generateEasycoopFichaPdf,
+  generateEasycoopFolhaLotePdf,
+  generateEasycoopLancamentosPdf,
+  generateEasycoopEsocialPdf,
+  generateTermoDesligamentoPdf,
+  generatePropostaAdesaoPdf,
+} from "../services/pdfService";
+import {
+  getEasycoopCooperadoFull,
+  getEasycoopFinancialHistory,
+  getEasycoopLancamentoItens,
+  getEasycoopCooperadoFolha,
+  getEasycoopCooperadoEsocial,
+  getEasycoopFolhasPeriodo,
+  listEasycoopContratos,
+} from "../services/easycoopService";
+import { consultarDesligamentoEProposta, formatCpf } from "../services/desligamentoService";
+
+function formatDateForDb(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  try {
+    const str = String(dateStr).trim();
+    if (str.includes("/")) {
+      const parts = str.split("/");
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      }
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split("T")[0];
+  } catch {
+    return null;
+  }
+}
 
 const router = Router();
 router.use(authenticateApiKey);
@@ -341,6 +379,479 @@ router.get("/cooperados/:cpf/folhas/:payrollId/comprovante", async (req: ApiAuth
   } catch (error: any) {
     console.error("[API v1 Error] Erro ao obter PDF do comprovante:", error.message);
     return res.status(500).json({ error: "Falha ao obter o PDF do comprovante." });
+  }
+});
+
+/* =========================================================================
+   MÓDULO EASYCOOP NA API V1
+   ========================================================================= */
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop
+ * Retorna o dossiê 360° completo do cooperado no EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf || numericCpf.length !== 11) {
+      return res.status(400).json({ error: "CPF inválido. Forneça 11 dígitos numéricos." });
+    }
+
+    const dossier = await getEasycoopCooperadoFull(numericCpf);
+    return res.json({
+      status: "SUCESSO",
+      cpf: numericCpf,
+      formattedCpf: formatCpf(numericCpf),
+      easycoop: dossier,
+    });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao obter dossiê EasyCoop:", error.message);
+    return res.status(error.message?.includes("não encontrado") ? 404 : 500).json({
+      error: "Falha ao obter dados do EasyCoop.",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/financeiro?ano=...&mes=...&tomador=...
+ * Retorna o histórico financeiro e fechamentos do cooperado no EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/financeiro", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf) return res.status(400).json({ error: "CPF inválido." });
+
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const tomador = req.query.tomador ? String(req.query.tomador).trim() : undefined;
+
+    const data = await getEasycoopFinancialHistory(numericCpf, ano, mes, tomador);
+    return res.json({
+      status: "SUCESSO",
+      cpf: numericCpf,
+      ...data,
+    });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao obter histórico financeiro EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao consultar histórico financeiro no EasyCoop.", details: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/financeiro/itens?ano=...&mes=...&folha=...
+ * Retorna as rubricas item a item de um fechamento específico no EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/financeiro/itens", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = parseInt(String(req.query.ano || "0"), 10);
+    const mes = parseInt(String(req.query.mes || "0"), 10);
+    const folha = parseInt(String(req.query.folha || "1"), 10);
+
+    const itens = await getEasycoopLancamentoItens(numericCpf, ano, mes, folha);
+    return res.json({ status: "SUCESSO", cpf: numericCpf, itens });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao obter itens de fechamento EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao consultar itens de repasse no EasyCoop.", details: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/folha?ano=...&mes=...&folha=...
+ * Retorna a folha analítica do cooperado com proventos, descontos e bases de cálculo
+ */
+router.get("/cooperados/:cpf/easycoop/folha", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const folha = req.query.folha ? parseInt(String(req.query.folha), 10) : 1;
+
+    const data = await getEasycoopCooperadoFolha(numericCpf, ano, mes, folha);
+    return res.json({ status: "SUCESSO", cpf: numericCpf, ...data });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao obter folha EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao carregar folha analítica no EasyCoop.", details: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/esocial?ano=...&mes=...&evento=...
+ * Retorna eventos e transmissões do eSocial do cooperado no EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/esocial", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const evento = req.query.evento ? String(req.query.evento).trim() : undefined;
+
+    const data = await getEasycoopCooperadoEsocial(numericCpf, ano, mes, evento);
+    return res.json({ status: "SUCESSO", cpf: numericCpf, ...data });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao obter eSocial EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao consultar eSocial no EasyCoop.", details: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/pdf/ficha
+ * Retorna o PDF oficial da Ficha Cadastral e Financeira EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/pdf/ficha", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const [coop, financial] = await Promise.all([
+      getEasycoopCooperadoFull(numericCpf),
+      getEasycoopFinancialHistory(numericCpf).catch(() => ({})),
+    ]);
+
+    const pdfBuffer = await generateEasycoopFichaPdf(coop, financial);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="ficha-cadastral-easycoop-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF da ficha EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar PDF da ficha cadastral EasyCoop." });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/pdf/folha?ano=...&mes=...&folha=...
+ * Retorna o PDF consolidado do Demonstrativo de Produtividade/Folha EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/pdf/folha", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const folha = req.query.folha ? parseInt(String(req.query.folha), 10) : 1;
+
+    let competencias: any = undefined;
+    if (req.query.competencias) {
+      try {
+        competencias = JSON.parse(String(req.query.competencias));
+      } catch {}
+    }
+
+    const coop = await getEasycoopCooperadoFull(numericCpf);
+    let folhasList: any[] = [];
+
+    if (ano && mes && (!competencias || competencias.length === 0)) {
+      const singleFolha = await getEasycoopCooperadoFolha(numericCpf, ano, mes, folha);
+      if (singleFolha?.folha) folhasList.push(singleFolha.folha);
+    } else {
+      folhasList = await getEasycoopFolhasPeriodo(numericCpf, ano, mes, competencias);
+    }
+
+    if (folhasList.length === 0) {
+      const singleFolha = await getEasycoopCooperadoFolha(numericCpf, ano, mes, folha);
+      if (singleFolha?.folha) folhasList.push(singleFolha.folha);
+    }
+
+    const pdfBuffer = await generateEasycoopFolhaLotePdf(coop, folhasList);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="demonstrativo-produtividade-easycoop-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF de demonstrativo EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar PDF de demonstrativo EasyCoop." });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/pdf/lancamentos?ano=...&mes=...&tomador=...
+ * Retorna o PDF do extrato de lançamentos de rubricas EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/pdf/lancamentos", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const tomador = req.query.tomador ? String(req.query.tomador).trim() : undefined;
+
+    const [coop, financial] = await Promise.all([
+      getEasycoopCooperadoFull(numericCpf),
+      getEasycoopFinancialHistory(numericCpf, ano, mes, tomador),
+    ]);
+
+    const pdfBuffer = await generateEasycoopLancamentosPdf(coop, financial.fechamentos || []);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="extrato-lancamentos-easycoop-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF de lançamentos EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar PDF de lançamentos EasyCoop." });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/easycoop/pdf/esocial?ano=...&mes=...&evento=...
+ * Retorna o PDF do relatório de eventos do eSocial EasyCoop
+ */
+router.get("/cooperados/:cpf/easycoop/pdf/esocial", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    const ano = req.query.ano ? parseInt(String(req.query.ano), 10) : undefined;
+    const mes = req.query.mes ? parseInt(String(req.query.mes), 10) : undefined;
+    const evento = req.query.evento ? String(req.query.evento).trim() : undefined;
+
+    const [coop, esocialData] = await Promise.all([
+      getEasycoopCooperadoFull(numericCpf),
+      getEasycoopCooperadoEsocial(numericCpf, ano, mes, evento),
+    ]);
+
+    const pdfBuffer = await generateEasycoopEsocialPdf(coop, esocialData.eventos || [], esocialData.metricas);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="relatorio-esocial-easycoop-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF eSocial EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar PDF de eventos do eSocial EasyCoop." });
+  }
+});
+
+/**
+ * GET /api/v1/easycoop/contratos?search=...&page=...&pageSize=...
+ * Lista paginada dos contratos e tomadores do EasyCoop
+ */
+router.get("/easycoop/contratos", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize || "20"), 10)));
+
+    const result = await listEasycoopContratos(search, page, pageSize);
+    return res.json({ status: "SUCESSO", ...result });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao listar contratos EasyCoop:", error.message);
+    return res.status(500).json({ error: "Falha ao listar contratos do EasyCoop.", details: error.message });
+  }
+});
+
+/* =========================================================================
+   MÓDULO TERMOS DE DESLIGAMENTO & ADESÃO EASY NA API V1
+   ========================================================================= */
+
+/**
+ * GET /api/v1/cooperados/:cpf/desligamento
+ * Consulta status do desligamento e da proposta de adesão Easy
+ */
+router.get("/cooperados/:cpf/desligamento", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf || numericCpf.length !== 11) {
+      return res.status(400).json({ error: "CPF inválido. Forneça 11 dígitos numéricos." });
+    }
+
+    const resultado = await consultarDesligamentoEProposta(numericCpf);
+    return res.json({
+      status: "SUCESSO",
+      cpf: numericCpf,
+      formattedCpf: resultado.formattedCpf,
+      desligamento: {
+        solicitado: resultado.termination.found,
+        status: resultado.termination.status,
+        mensagem: resultado.termination.message,
+        dados: resultado.termination.data,
+        linkPdf: `/api/v1/cooperados/${numericCpf}/desligamento/termo-pdf`,
+      },
+      adesao: {
+        localizada: resultado.proposal.found,
+        status: resultado.proposal.status,
+        mensagem: resultado.proposal.message,
+        dados: resultado.proposal.data,
+        linkPdf: `/api/v1/cooperados/${numericCpf}/adesao/termo-pdf`,
+      },
+    });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao consultar desligamento/adesão:", error.message);
+    return res.status(400).json({ error: error.message || "Falha ao consultar desligamento e adesão." });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/desligamento/termo-pdf
+ * Retorna o PDF oficial gerado do Termo de Desligamento
+ */
+router.get("/cooperados/:cpf/desligamento/termo-pdf", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf) return res.status(400).json({ error: "CPF inválido." });
+
+    const resultado = await consultarDesligamentoEProposta(numericCpf);
+    const pdfBuffer = await generateTermoDesligamentoPdf(resultado.termination?.data || resultado.termination || {}, numericCpf);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="termo-desligamento-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF do termo de desligamento:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar o PDF do termo de desligamento.", details: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/cooperados/:cpf/adesao/termo-pdf (e alias /proposta-pdf)
+ * Retorna o PDF oficial gerado da Proposta/Termo de Adesão Easy
+ */
+const handleAdesaoPdf = async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf) return res.status(400).json({ error: "CPF inválido." });
+
+    const resultado = await consultarDesligamentoEProposta(numericCpf);
+    const pdfBuffer = await generatePropostaAdesaoPdf(resultado.proposal?.data || {}, numericCpf);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="proposta-adesao-${numericCpf}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao gerar PDF da proposta de adesão:", error.message);
+    return res.status(500).json({ error: "Falha ao gerar o PDF da proposta de adesão.", details: error.message });
+  }
+};
+router.get("/cooperados/:cpf/adesao/termo-pdf", handleAdesaoPdf);
+router.get("/cooperados/:cpf/adesao/proposta-pdf", handleAdesaoPdf);
+
+/* =========================================================================
+   MÓDULO EDIÇÃO DE CAMPOS DO SIC NA API V1
+   ========================================================================= */
+
+/**
+ * PUT /api/v1/cooperados/:cpf/sic
+ * Atualiza campos cadastrais do cooperado (E-mail, WhatsApp, Data de Nascimento, RG, Endereço)
+ * no Centralizador SIC (MySQL) e sincroniza de forma oficial com o SIC (ui.coopedu.app.br)
+ */
+router.put("/cooperados/:cpf/sic", async (req: ApiAuthenticatedRequest, res: Response) => {
+  try {
+    const rawCpf = Array.isArray(req.params.cpf) ? req.params.cpf[0] : req.params.cpf;
+    const numericCpf = cleanCpf(rawCpf || "");
+    if (!numericCpf || numericCpf.length !== 11) {
+      return res.status(400).json({ error: "CPF inválido. Forneça 11 dígitos numéricos." });
+    }
+
+    const {
+      email,
+      whatsapp,
+      whatsapp_number,
+      cellPhone,
+      birth_date,
+      dataNascimento,
+      birthDate,
+      rg,
+      rg_number,
+      rgIssuer,
+      rgState,
+      street,
+      rua,
+      number,
+      numero,
+      complement,
+      complemento,
+      neighborhood,
+      bairro,
+      city,
+      cidade,
+      state,
+      estado,
+      zip_code,
+      cep,
+    } = req.body || {};
+
+    const finalEmail = email !== undefined ? String(email).trim().toLowerCase() : undefined;
+    const finalWhatsapp = cleanCpf(whatsapp || whatsapp_number || cellPhone || "");
+    const finalBirthDate = birth_date || dataNascimento || birthDate || undefined;
+    const formattedBirthDate = formatDateForDb(finalBirthDate);
+    const finalRg = rg !== undefined ? String(rg).trim() : (rg_number !== undefined ? String(rg_number).trim() : undefined);
+    const finalStreet = street !== undefined ? String(street).trim() : (rua !== undefined ? String(rua).trim() : undefined);
+    const finalNumber = number !== undefined ? String(number).trim() : (numero !== undefined ? String(numero).trim() : undefined);
+    const finalComplement = complement !== undefined ? String(complement).trim() : (complemento !== undefined ? String(complemento).trim() : undefined);
+    const finalNeighborhood = neighborhood !== undefined ? String(neighborhood).trim() : (bairro !== undefined ? String(bairro).trim() : undefined);
+    const finalCity = city !== undefined ? String(city).trim() : (cidade !== undefined ? String(cidade).trim() : undefined);
+    const finalState = state !== undefined ? String(state).trim().toUpperCase() : (estado !== undefined ? String(estado).trim().toUpperCase() : undefined);
+    const finalZipCode = zip_code !== undefined ? cleanCpf(zip_code) : (cep !== undefined ? cleanCpf(cep) : undefined);
+
+    // 1. Atualizar no banco MySQL local de forma consistente
+    await pool.query(
+      `UPDATE cooperados SET
+        email = COALESCE(?, email),
+        whatsapp_number = COALESCE(?, whatsapp_number),
+        birth_date = COALESCE(?, birth_date),
+        street = COALESCE(?, street),
+        number = COALESCE(?, number),
+        complement = COALESCE(?, complement),
+        neighborhood = COALESCE(?, neighborhood),
+        city = COALESCE(?, city),
+        state = COALESCE(?, state),
+        zip_code = COALESCE(?, zip_code),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE document = ?`,
+      [
+        finalEmail || null,
+        finalWhatsapp || null,
+        formattedBirthDate || null,
+        finalStreet || null,
+        finalNumber || null,
+        finalComplement || null,
+        finalNeighborhood || null,
+        finalCity || null,
+        finalState || null,
+        finalZipCode || null,
+        numericCpf,
+      ]
+    );
+
+    // 2. Sincronizar oficialmente com a API do SIC (ui.coopedu.app.br)
+    const sicSyncResult = await updateOfficialSicCooperadoData(numericCpf, {
+      email: finalEmail,
+      whatsapp: finalWhatsapp,
+      birthDate: finalBirthDate,
+      rg: finalRg,
+      rgIssuer,
+      rgState: finalState || rgState,
+      street: finalStreet,
+      number: finalNumber,
+      complement: finalComplement,
+      neighborhood: finalNeighborhood,
+      city: finalCity,
+      state: finalState,
+      zipCode: finalZipCode,
+    });
+
+    const [rows] = await pool.query<any[]>("SELECT * FROM cooperados WHERE document = ?", [numericCpf]);
+
+    return res.json({
+      status: "SUCESSO",
+      message: sicSyncResult.success
+        ? "Dados cadastrais atualizados com sucesso no Centralizador SIC e sincronizados com o SIC oficial!"
+        : `Dados cadastrais atualizados no Centralizador SIC local. (${sicSyncResult.message})`,
+      syncedOfficialSic: sicSyncResult.success,
+      cooperado: rows[0] || null,
+      sicDetails: sicSyncResult.details || null,
+    });
+  } catch (error: any) {
+    console.error("[API v1 Error] Erro ao editar campos do SIC:", error.message);
+    return res.status(500).json({ error: "Falha ao editar campos do cooperado no SIC.", details: error.message });
   }
 });
 

@@ -107,6 +107,13 @@ export async function initDb() {
     try {
       await connection.query("ALTER TABLE cooperados ADD COLUMN sic_id VARCHAR(100) NULL AFTER document;");
     } catch (e) {}
+    try {
+      await connection.query("ALTER TABLE cooperados ADD COLUMN sic_synced_at DATETIME NULL AFTER sic_id;");
+    } catch (e) {}
+    try {
+      // Nomes dos contratos do cooperado no SIC (JSON, ativos primeiro)
+      await connection.query("ALTER TABLE cooperados ADD COLUMN sic_contracts TEXT NULL AFTER contract_name;");
+    } catch (e) {}
 
     // 3. Tabela upload_logs
     await connection.query(`

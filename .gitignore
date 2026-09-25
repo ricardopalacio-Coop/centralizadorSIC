@@ -45,3 +45,10 @@ docker_data/
 # Archives & Dumps
 *.tar.gz
 *.sql
+
+# Configuracao local do Claude Code (permissoes da maquina, nao versionar)
+.claude/settings.local.json
+
+# Saida gerada pelo graphify e planilhas com dados de cooperados (LGPD)
+graphify-out/
+*.xlsx

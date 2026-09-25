@@ -39,6 +39,7 @@ import {
 import { PdfViewerModal } from './PdfViewerModal';
 import { FolhaLoteModal } from './FolhaLoteModal';
 import { DemonstrativoProdutividadeCard } from './DemonstrativoProdutividadeCard';
+import { exibirCpf } from "../lib/lgpd";
 
 export function toUpperNoAccents(str: any): string {
   if (str === null || str === undefined) return '';
@@ -284,7 +285,7 @@ export const EasyCoopCooperadoDossier: React.FC<EasyCoopCooperadoDossierProps> =
     if (!val) return '-';
     const d = val.replace(/\D/g, '');
     if (d.length === 11) {
-      return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+      return exibirCpf(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'));
     }
     return val;
   };

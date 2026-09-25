@@ -1,5 +1,6 @@
 import React from "react";
 import { Search, Loader2, User, ChevronRight } from "lucide-react";
+import { exibirCpf } from "../lib/lgpd";
 
 export interface Cooperado {
   id: number;
@@ -88,7 +89,7 @@ export const CooperadoSearch: React.FC<CooperadoSearchProps> = ({
                     </div>
                     <div className="truncate">
                       <p className="text-xs font-bold truncate">{c.name}</p>
-                      <p className="text-[11px] font-mono text-slate-500">{formatCpfDisplay(c.document)}</p>
+                      <p className="text-[11px] font-mono text-slate-500">{exibirCpf(formatCpfDisplay(c.document))}</p>
                     </div>
                   </div>
                   <ChevronRight className={`h-4 w-4 shrink-0 ${isSelected ? "text-sky-600" : "text-slate-400"}`} />

@@ -183,6 +183,62 @@ export async function generateApiManualPdf(outputPath?: string): Promise<Buffer>
     doc.text("• Retorna o arquivo PDF original oficial gerado pelo SIC em fluxo binário.");
     doc.moveDown(1);
 
+    // ENDPOINT 7: DOSSIÊ E DADOS EASYCOOP
+    if (doc.y > 660) doc.addPage();
+
+    doc.fillColor(emeraldColor).fontSize(10).font("Helvetica-Bold").text("ENDPOINT 7: Dossiê Completo & Financeiro EasyCoop", 40, doc.y);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/easycoop", 40, doc.y + 12);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/easycoop/financeiro?ano=2026&mes=7", 40, doc.y + 26);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/easycoop/folha?ano=2026&mes=7&folha=1", 40, doc.y + 40);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/easycoop/esocial", 40, doc.y + 54);
+    doc.moveDown(4.5);
+
+    doc.fillColor(subSlate).fontSize(8).font("Helvetica-Bold").text("Informações Disponibilizadas pelo Módulo EasyCoop:");
+    doc.fillColor(darkSlate).fontSize(8).font("Helvetica");
+    doc.text("• Dossiê 360°: dados cadastrais consolidados, alocações em contratos/tomadores, dependentes e documentos.");
+    doc.text("• Financeiro: fechamentos, métricas de produção bruta/líquida, retenções de INSS, IRRF e taxa administrativa.");
+    doc.text("• Folha Analítica: espelho completo com proventos, descontos, rubricas e bases de cálculo da competência.");
+    doc.text("• eSocial: histórico de eventos e transmissões oficiais (S-1200, S-1210) com protocolo, recibo e data.");
+    doc.text("• PDFs EasyCoop: downloads diretos em /easycoop/pdf/ficha, /pdf/folha, /pdf/lancamentos e /pdf/esocial.");
+    doc.moveDown(1);
+
+    // ENDPOINT 8: TERMOS DE DESLIGAMENTO E ADESÃO EASY
+    if (doc.y > 660) doc.addPage();
+
+    doc.fillColor(emeraldColor).fontSize(10).font("Helvetica-Bold").text("ENDPOINT 8: Termos de Desligamento & Adesão Easy (Status e PDFs)", 40, doc.y);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/desligamento", 40, doc.y + 12);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/desligamento/termo-pdf", 40, doc.y + 26);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("GET /api/v1/cooperados/{CPF}/adesao/termo-pdf", 40, doc.y + 40);
+    doc.moveDown(3.5);
+
+    doc.fillColor(subSlate).fontSize(8).font("Helvetica-Bold").text("Especificações de Desligamento e Adesão:");
+    doc.fillColor(darkSlate).fontSize(8).font("Helvetica");
+    doc.text("• Consulta de Status: verifica se há solicitação de desligamento e proposta de adesão na API M2M da Coopedu.");
+    doc.text("• Termo de Desligamento (PDF): gera e transmite o documento oficial de desligamento preenchido.");
+    doc.text("• Proposta de Adesão (PDF): gera e transmite o termo oficial de proposta e admissão à cooperativa.");
+    doc.moveDown(1);
+
+    // ENDPOINT 9: EDIÇÃO DOS CAMPOS DO SIC
+    if (doc.y > 640) doc.addPage();
+
+    doc.fillColor(emeraldColor).fontSize(10).font("Helvetica-Bold").text("ENDPOINT 9: Edição & Sincronização de Campos no SIC Oficial", 40, doc.y);
+    doc.fillColor(darkSlate).fontSize(9).font("Courier-Bold").text("PUT /api/v1/cooperados/{CPF}/sic", 40, doc.y + 12);
+    doc.moveDown(1.5);
+
+    doc.fillColor(subSlate).fontSize(8).font("Helvetica-Bold").text("Payload JSON de Entrada (Campos Suportados):");
+    doc.fillColor(darkSlate).fontSize(8).font("Helvetica");
+    doc.text("• email (String): Novo e-mail de contato (normalizado automaticamente em minúsculas).");
+    doc.text("• whatsapp (String): Número com DDD (apenas os 11 dígitos numéricos).");
+    doc.text("• birth_date (String): Data de nascimento em formato ISO 8601 UTC (YYYY-MM-DDT00:00:00.000Z ou DD/MM/AAAA).");
+    doc.text("• rg (String): Número do documento RG (convertido automaticamente para string simples).");
+    doc.text("• street, number, complement, neighborhood, city, state, zip_code: Campos opcionais de endereço.");
+    doc.moveDown(0.3);
+    doc.fillColor(subSlate).fontSize(8).font("Helvetica-Bold").text("Regras Críticas de Execução:");
+    doc.fillColor(darkSlate).fontSize(8).font("Helvetica");
+    doc.text("• O endpoint realiza o fluxo seguro GET -> PUT no portal oficial do SIC (ui.coopedu.app.br).");
+    doc.text("• Atualiza o banco MySQL local de forma transacional e sincroniza com a sessão oficial do operador.");
+    doc.moveDown(1);
+
     // SEÇÃO 3: CÓDIGOS DE RESPOSTA HTTP
     doc.fillColor(primaryColor).fontSize(14).font("Helvetica-Bold").text("3. Tabela de Códigos HTTP de Resposta", 40, doc.y);
     doc.moveDown(0.6);

@@ -18,7 +18,10 @@ import googleDriveDesligamentoRoutes from "./routes/googleDriveDesligamento";
 import easycoopRoutes from "./routes/easycoop";
 import sicSettingsRoutes from "./routes/sicSettings";
 import dossierRoutes from "./routes/dossier";
+import lgpdRoutes from "./routes/lgpd";
+import { lgpdMask } from "./middlewares/lgpdMask";
 import { startSicAutoRefreshWorker } from "./services/sicBrowserAutomation";
+import { startSicCooperadosSyncWorker } from "./services/sicCooperadosSyncService";
 
 dotenv.config();
 
@@ -68,7 +71,10 @@ const apiV1Limiter = rateLimit({
 app.use("/api/auth/login", loginLimiter);
 app.use("/api/v1", apiV1Limiter);
 
-// 6. Rotas da API
+// 6. Mascaramento LGPD (antes das rotas, para envolver todas as respostas)
+app.use(lgpdMask);
+
+// 7. Rotas da API
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/cooperados", cooperadoRoutes);
@@ -81,6 +87,7 @@ app.use("/api/drive", googleDriveRoutes);
 app.use("/api/easycoop", easycoopRoutes);
 app.use("/api/sic", sicSettingsRoutes);
 app.use("/api/dossie", dossierRoutes);
+app.use("/api/lgpd", lgpdRoutes);
 
 // Rota de teste de saúde da API
 app.get("/api/health", (req, res) => {
@@ -116,6 +123,7 @@ if (process.env.VERCEL !== "1") {
   initDb()
     .then(() => {
       startSicAutoRefreshWorker();
+      startSicCooperadosSyncWorker();
       app.listen(PORT, () => {
         console.log(`==================================================`);
         console.log(`🚀 Centralizador SIC Backend & Frontend rodando na porta ${PORT}`);

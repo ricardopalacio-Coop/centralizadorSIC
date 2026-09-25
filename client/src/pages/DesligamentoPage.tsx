@@ -21,6 +21,7 @@ import {
   UserPlus,
   CheckSquare,
 } from "lucide-react";
+import { exibirCpf } from "../lib/lgpd";
 
 export const DesligamentoPage: React.FC = () => {
   const [cpf, setCpf] = useState<string>("");
@@ -380,7 +381,7 @@ export const DesligamentoPage: React.FC = () => {
                         CPF do Cooperado
                       </span>
                       <p className="text-sm font-mono font-extrabold text-white">
-                        {result.formattedCpf || formatCpfInput(result.proposal.data.cpf || result.cpf)}
+                        {result.formattedCpf || exibirCpf(formatCpfInput(result.proposal.data.cpf || result.cpf))}
                       </p>
                     </div>
                   </div>
